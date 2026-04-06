@@ -13,7 +13,7 @@ Internal tool for entering daily thali orders: **React** (Vite) frontend, **Expr
 
 - `MONGODB_URI` — **required**. Use e.g. `mongodb://127.0.0.1:27017/tiffin` locally. For **Atlas**, use a URI that ends with `/tiffin` so the app uses the `tiffin` database (for example `mongodb+srv://USER:PASSWORD@cluster...mongodb.net/tiffin`).
 - `PORT` — optional; defaults to **5000** if unset (the process exits if `MONGODB_URI` is missing).
-- **CORS** — `http://localhost`, `http://127.0.0.1` (any port), and **`https://*.onrender.com`** are allowed by default. For a frontend on another host (e.g. Vercel), set **`CORS_ORIGINS`** to a comma-separated list of full origins (no trailing slash), e.g. `https://myapp.vercel.app`.
+- **CORS** — by default: **`localhost` / `127.0.0.1`** (any port), **`https://*.onrender.com`**, and **`https://*.vercel.app`**. For any other origin (custom domain, etc.), set **`CORS_ORIGINS`** to comma-separated full origins (no trailing slash), e.g. `https://app.example.com`.
 
 **Atlas:** Allow your client IP (or `0.0.0.0/0` for quick tests) under **Network Access**, and give the database user read/write access.
 
