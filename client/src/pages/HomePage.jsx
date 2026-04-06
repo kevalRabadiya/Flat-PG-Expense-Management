@@ -12,7 +12,7 @@ import {
 import Loader from "../components/Loader.jsx";
 import { getOrdersHistory, getUsers } from "../api";
 import { formatDateDDMMYYYY } from "../utils/dateFormat.js";
-import { useTheme } from "../theme/ThemeContext.jsx";
+import { useTheme } from "../theme/useTheme.js";
 
 function todayISO() {
   const d = new Date();
