@@ -24,6 +24,8 @@ function isAllowedCorsOrigin(origin: string | undefined) {
     if (host === "localhost" || host === "127.0.0.1") return true;
     // Render web services (e.g. https://ordersplit.onrender.com and other *.onrender.com sites)
     if (u.protocol === "https:" && host.endsWith(".onrender.com")) return true;
+    // Vercel deployments (preview + production *.vercel.app)
+    if (u.protocol === "https:" && host.endsWith(".vercel.app")) return true;
   } catch {
     return false;
   }
