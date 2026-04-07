@@ -4,6 +4,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import { usersRouter } from "./routes/users.js";
 import { ordersRouter } from "./routes/orders.js";
+import { housekeeperRouter } from "./routes/housekeeper.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const PORT = Number(process.env.PORT) || 5000;
@@ -54,6 +55,7 @@ app.use(express.json());
 
 app.use("/api/users", usersRouter);
 app.use("/api/orders", ordersRouter);
+app.use("/api/housekeeper", housekeeperRouter);
 
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error(err);

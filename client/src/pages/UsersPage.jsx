@@ -73,6 +73,7 @@ export default function UsersPage() {
               <div className="user-meta">
                 <strong>{u.name}</strong>
                 <span className="muted">{u.phone}</span>
+                {u.email ? <span className="small muted">{u.email}</span> : null}
                 {u.address ? <span className="small">{u.address}</span> : null}
               </div>
               <Link
