@@ -78,3 +78,21 @@ export function getOrdersHistory({ from, to, userId }) {
     `${API_BASE}/api/orders${q ? `?${q}` : ""}`
   ).then(handleJson);
 }
+
+export function getHousekeeperAttendance({ from, to }) {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const q = params.toString();
+  return fetch(
+    `${API_BASE}/api/housekeeper${q ? `?${q}` : ""}`
+  ).then(handleJson);
+}
+
+export function setHousekeeperAttendance(dateKey, present) {
+  return fetch(`${API_BASE}/api/housekeeper/${encodeURIComponent(dateKey)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ present }),
+  }).then(handleJson);
+}

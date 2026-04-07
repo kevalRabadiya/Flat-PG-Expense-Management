@@ -5,6 +5,7 @@ import AddUserPage from "./pages/AddUserPage.jsx";
 import OrderPage from "./pages/OrderPage.jsx";
 import HistoryPage from "./pages/HistoryPage.jsx";
 import InvoicePage from "./pages/InvoicePage.jsx";
+import HousekeeperPage from "./pages/HousekeeperPage.jsx";
 import { useTheme } from "./theme/useTheme.js";
 import "./App.css";
 
@@ -78,6 +79,7 @@ function Layout({ children }) {
             <NavLink to="/users">Users</NavLink>
             <NavLink to="/history">History</NavLink>
             <NavLink to="/invoice">Invoice</NavLink>
+            <NavLink to="/housekeeper">HouseKeeper</NavLink>
             <NavLink to="/order">Order</NavLink>
           </nav>
           <ThemeToggle />
@@ -97,6 +99,7 @@ export default function App() {
         <Route path="/users/new" element={<AddUserPage />} />
         <Route path="/history" element={<HistoryPage />} />
         <Route path="/invoice" element={<InvoicePage />} />
+        <Route path="/housekeeper" element={<HousekeeperPage />} />
         <Route path="/order" element={<OrderPage />} />
       </Routes>
     </Layout>

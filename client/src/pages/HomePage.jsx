@@ -10,7 +10,11 @@ import {
   YAxis,
 } from "recharts";
 import Loader from "../components/Loader.jsx";
-import { getOrdersHistory, getUsers } from "../api";
+import {
+  getHousekeeperAttendance,
+  getOrdersHistory,
+  getUsers,
+} from "../api";
 import { formatDateDDMMYYYY } from "../utils/dateFormat.js";
 import {
   computeDailyOptimization,
@@ -179,6 +183,7 @@ export default function HomePage() {
   const [chartMonth, setChartMonth] = useState(currentMonthValue);
   const [users, setUsers] = useState([]);
   const [monthOrders, setMonthOrders] = useState([]);
+  const [housekeeperRows, setHousekeeperRows] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -230,6 +235,15 @@ export default function HomePage() {
     return sum;
   }, [dailyOptimization, range.from, range.to]);
 
+  const housekeeperDays = useMemo(
+    () =>
+      housekeeperRows.filter((r) => r?.present && typeof r?.dateKey === "string")
+        .length,
+    [housekeeperRows]
+  );
+  const housekeeperRate = Number(import.meta.env.VITE_HOUSEKEEPER_RATE_PER_DAY) || 0;
+  const housekeeperAmount = housekeeperDays * housekeeperRate;
+
   const topOptimizedUsers = useMemo(() => {
     const totals = new Map();
     for (const dateKey of eachDateKeyInRange(range.from, range.to)) {
@@ -265,13 +279,15 @@ export default function HomePage() {
       Promise.all([
         getUsers(),
         getOrdersHistory({ from: range.from, to: range.to }),
+        getHousekeeperAttendance({ from: range.from, to: range.to }),
         getOrdersHistory({ from: lookbackFrom, to: today }),
       ])
-        .then(([userList, monthRows, recentRows]) => {
+        .then(([userList, monthRows, housekeeperList, recentRows]) => {
           if (cancelled) return;
           setError(null);
           setUsers(Array.isArray(userList) ? userList : []);
           setMonthOrders(Array.isArray(monthRows) ? monthRows : []);
+          setHousekeeperRows(Array.isArray(housekeeperList) ? housekeeperList : []);
           const sorted = Array.isArray(recentRows) ? recentRows : [];
           setRecentOrders(sorted.slice(0, 4));
         })
@@ -280,6 +296,7 @@ export default function HomePage() {
             setError(e.message);
             setUsers([]);
             setMonthOrders([]);
+            setHousekeeperRows([]);
             setRecentOrders([]);
           }
         })
@@ -376,6 +393,13 @@ export default function HomePage() {
         <div className="card-elevated home-stat-card">
           <p className="home-stat-label muted mb-0">Users</p>
           <p className="home-stat-value">{users.length}</p>
+        </div>
+        <div className="card-elevated home-stat-card home-stat-card--housekeeper">
+          <p className="home-stat-label mb-0">HouseKeeper</p>
+          <p className="home-stat-sublabel muted small mb-0">
+            {housekeeperDays} day{housekeeperDays === 1 ? "" : "s"} × ₹{housekeeperRate}
+          </p>
+          <p className="home-stat-value">₹{housekeeperAmount}</p>
         </div>
       </div>
 
