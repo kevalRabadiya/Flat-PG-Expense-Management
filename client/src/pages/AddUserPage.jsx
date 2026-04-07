@@ -6,18 +6,26 @@ export default function AddUserPage() {
   const navigate = useNavigate();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   async function onSubmit(e) {
     e.preventDefault();
     setError(null);
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!emailRe.test(normalizedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     setSaving(true);
     try {
       await createUser({
         name,
         phone,
+        email: normalizedEmail,
         address: address.trim() || undefined,
       });
       navigate("/users");
@@ -50,7 +58,7 @@ export default function AddUserPage() {
             onChange={(e) => setName(e.target.value)}
             required
             autoComplete="name"
-            placeholder="e.g. Priya Sharma"
+            placeholder="e.g. John Doe"
           />
         </label>
         <label>
@@ -61,6 +69,17 @@ export default function AddUserPage() {
             required
             autoComplete="tel"
             placeholder="+91 …"
+          />
+        </label>
+        <label>
+          Email
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="name@example.com"
           />
         </label>
         <label>

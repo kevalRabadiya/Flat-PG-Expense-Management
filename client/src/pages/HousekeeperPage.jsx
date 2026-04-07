@@ -44,7 +44,8 @@ function buildCalendarCells(ym) {
   for (let i = 0; i < firstWeekDay; i += 1) cells.push(null);
   for (let day = 1; day <= lastDay; day += 1) {
     const dateKey = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    cells.push({ day, dateKey });
+    const weekDay = new Date(year, month - 1, day).getDay();
+    cells.push({ day, dateKey, weekDay });
   }
   return cells;
 }
@@ -190,6 +191,8 @@ export default function HousekeeperPage() {
                   type="button"
                   className={[
                     "housekeeper-day",
+                    cell.weekDay === 0 ? "housekeeper-day--sun" : "",
+                    cell.weekDay === 6 ? "housekeeper-day--sat" : "",
                     isChecked ? "housekeeper-day--checked" : "",
                     isPastOrToday ? "housekeeper-day--clickable" : "housekeeper-day--future",
                   ]

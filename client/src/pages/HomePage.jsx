@@ -184,6 +184,7 @@ export default function HomePage() {
   const [users, setUsers] = useState([]);
   const [monthOrders, setMonthOrders] = useState([]);
   const [housekeeperRows, setHousekeeperRows] = useState([]);
+  const [housekeeperYearRows, setHousekeeperYearRows] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -191,6 +192,7 @@ export default function HomePage() {
   const range = useMemo(() => monthToDateRange(chartMonth), [chartMonth]);
   const today = useMemo(() => todayISO(), []);
   const lookbackFrom = useMemo(() => lookbackFromISO(120), []);
+  const currentYearFrom = useMemo(() => `${today.slice(0, 4)}-01-01`, [today]);
 
   const stats = useMemo(
     () => aggregateMonthOrders(monthOrders, range.from, range.to),
@@ -244,6 +246,29 @@ export default function HomePage() {
   const housekeeperRate = Number(import.meta.env.VITE_HOUSEKEEPER_RATE_PER_DAY) || 0;
   const housekeeperAmount = housekeeperDays * housekeeperRate;
 
+  const housekeeperMonthlyChartData = useMemo(() => {
+    const year = Number(today.slice(0, 4));
+    const presentByMonth = new Map();
+    for (const row of housekeeperYearRows) {
+      if (!row?.present || typeof row?.dateKey !== "string") continue;
+      const mk = row.dateKey.slice(0, 7);
+      presentByMonth.set(mk, (presentByMonth.get(mk) || 0) + 1);
+    }
+    const monthNow = Number(today.slice(5, 7));
+    const out = [];
+    for (let m = 1; m <= monthNow; m += 1) {
+      const monthKey = `${year}-${String(m).padStart(2, "0")}`;
+      const days = presentByMonth.get(monthKey) || 0;
+      out.push({
+        monthKey,
+        monthLabel: new Date(year, m - 1, 1).toLocaleString("en-IN", { month: "short" }),
+        days,
+        amount: days * housekeeperRate,
+      });
+    }
+    return out;
+  }, [housekeeperRate, housekeeperYearRows, today]);
+
   const topOptimizedUsers = useMemo(() => {
     const totals = new Map();
     for (const dateKey of eachDateKeyInRange(range.from, range.to)) {
@@ -280,14 +305,18 @@ export default function HomePage() {
         getUsers(),
         getOrdersHistory({ from: range.from, to: range.to }),
         getHousekeeperAttendance({ from: range.from, to: range.to }),
+        getHousekeeperAttendance({ from: currentYearFrom, to: today }),
         getOrdersHistory({ from: lookbackFrom, to: today }),
       ])
-        .then(([userList, monthRows, housekeeperList, recentRows]) => {
+        .then(([userList, monthRows, housekeeperList, housekeeperYearList, recentRows]) => {
           if (cancelled) return;
           setError(null);
           setUsers(Array.isArray(userList) ? userList : []);
           setMonthOrders(Array.isArray(monthRows) ? monthRows : []);
           setHousekeeperRows(Array.isArray(housekeeperList) ? housekeeperList : []);
+          setHousekeeperYearRows(
+            Array.isArray(housekeeperYearList) ? housekeeperYearList : []
+          );
           const sorted = Array.isArray(recentRows) ? recentRows : [];
           setRecentOrders(sorted.slice(0, 4));
         })
@@ -297,6 +326,7 @@ export default function HomePage() {
             setUsers([]);
             setMonthOrders([]);
             setHousekeeperRows([]);
+            setHousekeeperYearRows([]);
             setRecentOrders([]);
           }
         })
@@ -307,7 +337,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [range.from, range.to, lookbackFrom, today]);
+  }, [range.from, range.to, lookbackFrom, currentYearFrom, today]);
 
   const monthLabelShort = `${chartMonth.slice(5, 7)}/${chartMonth.slice(0, 4)}`;
   const rangeDisplay = `${formatDateDDMMYYYY(range.from)} – ${formatDateDDMMYYYY(range.to)}`;
@@ -582,6 +612,60 @@ export default function HomePage() {
                     fill={chartColors.accent}
                     radius={[6, 6, 0, 0]}
                     maxBarSize={24}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="home-charts-row">
+        <div className="card-elevated home-chart-card home-chart-card--span2">
+          <h2 className="form-section-title home-chart-title">
+            HouseKeeper totalAmount (current year)
+          </h2>
+          <div className="home-chart-inner">
+            {housekeeperMonthlyChartData.length === 0 ? (
+              <p className="muted mb-0 home-chart-empty">No data.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart
+                  data={housekeeperMonthlyChartData}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke={chartColors.grid}
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="monthLabel"
+                    tick={{ fill: chartColors.text, fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={{ stroke: chartColors.border }}
+                  />
+                  <YAxis
+                    tick={{ fill: chartColors.text, fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={{ stroke: chartColors.border }}
+                    width={40}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--bg-elevated)",
+                      border: `1px solid ${chartColors.border}`,
+                      borderRadius: "var(--radius-sm)",
+                      color: "var(--text-h)",
+                    }}
+                    formatter={(value) => [`₹${value}`, "Total amount"]}
+                    labelFormatter={(_, payload) => payload?.[0]?.payload?.monthKey || ""}
+                  />
+                  <Bar
+                    dataKey="amount"
+                    fill={chartColors.accent}
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={28}
                   />
                 </BarChart>
               </ResponsiveContainer>

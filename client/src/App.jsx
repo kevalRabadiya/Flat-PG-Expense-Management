@@ -76,11 +76,11 @@ function Layout({ children }) {
             <NavLink to="/" end>
               Home
             </NavLink>
-            <NavLink to="/users">Users</NavLink>
+            <NavLink to="/order">Order</NavLink>
             <NavLink to="/history">History</NavLink>
             <NavLink to="/invoice">Invoice</NavLink>
             <NavLink to="/housekeeper">HouseKeeper</NavLink>
-            <NavLink to="/order">Order</NavLink>
+            <NavLink to="/users">Users</NavLink>
           </nav>
           <ThemeToggle />
         </div>

@@ -1393,6 +1393,16 @@
   opacity: 0.45;
 }
 
+.housekeeper-day--sun {
+  border-color: color-mix(in srgb, var(--error) 38%, var(--border));
+  background: color-mix(in srgb, var(--error) 10%, var(--surface));
+}
+
+.housekeeper-day--sat {
+  border-color: color-mix(in srgb, var(--accent) 38%, var(--border));
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
 .housekeeper-day--checked {
   border-color: color-mix(in srgb, var(--success) 45%, var(--border));
   background: color-mix(in srgb, var(--success) 14%, var(--surface));

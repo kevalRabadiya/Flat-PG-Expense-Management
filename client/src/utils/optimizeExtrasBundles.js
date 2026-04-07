@@ -1,9 +1,24 @@
 import { THALI_BUNDLES } from "../data/thaliBundles.js";
 
-const ROTI_PRICE = 10;
-const SABJI_PRICE = 40;
-const DAL_PRICE = 40;
-const RICE_PRICE = 30;
+function readVitePrice(key, fallback) {
+  const raw = import.meta.env[key];
+  if (raw == null || raw === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return n;
+}
+
+const ROTI_PRICE = readVitePrice("VITE_ROTI_PRICE", 10);
+const SABJI_PRICE = readVitePrice("VITE_SABJI_UNIT_PRICE", 40);
+const DAL_PRICE = readVitePrice("VITE_DAL_RICE_UNIT_PRICE", 40);
+const RICE_PRICE = readVitePrice("VITE_RICE_PRICE", 30);
+
+export const EXTRA_PRICES = {
+  roti: ROTI_PRICE,
+  sabji: SABJI_PRICE,
+  dalRice: DAL_PRICE,
+  rice: RICE_PRICE,
+};
 
 const THALI_BY_ID = new Map(THALI_BUNDLES.map((b) => [b.id, b]));
 

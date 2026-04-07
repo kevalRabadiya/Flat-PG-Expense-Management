@@ -1,6 +1,6 @@
 import { HttpError } from "./httpError.js";
 
-const THALI_PRICES: Record<number, number> = {
+const DEFAULT_THALI_PRICES: Record<number, number> = {
   1: 110,
   2: 110,
   3: 90,
@@ -8,13 +8,29 @@ const THALI_PRICES: Record<number, number> = {
   5: 75,
 };
 
+function readPriceFromEnv(key: string, fallback: number): number {
+  const raw = process.env[key];
+  if (raw == null || raw === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return fallback;
+  return n;
+}
+
+const THALI_PRICES: Record<number, number> = {
+  1: readPriceFromEnv("THALI_1_PRICE", DEFAULT_THALI_PRICES[1]),
+  2: readPriceFromEnv("THALI_2_PRICE", DEFAULT_THALI_PRICES[2]),
+  3: readPriceFromEnv("THALI_3_PRICE", DEFAULT_THALI_PRICES[3]),
+  4: readPriceFromEnv("THALI_4_PRICE", DEFAULT_THALI_PRICES[4]),
+  5: readPriceFromEnv("THALI_5_PRICE", DEFAULT_THALI_PRICES[5]),
+};
+
 /** Allowed values for dal-rice dropdown (₹40 when set). */
 export const DAL_RICE_TYPES = ["Pulav", "Khichdi", "Dalrice"] as const;
 
-const ROTI_PRICE = 10;
-const RICE_PRICE = 30;
-const SABJI_UNIT_PRICE = 40;
-const DAL_RICE_UNIT_PRICE = 40;
+const ROTI_PRICE = readPriceFromEnv("ROTI_PRICE", 10);
+const RICE_PRICE = readPriceFromEnv("RICE_PRICE", 30);
+const SABJI_UNIT_PRICE = readPriceFromEnv("SABJI_UNIT_PRICE", 40);
+const DAL_RICE_UNIT_PRICE = readPriceFromEnv("DAL_RICE_UNIT_PRICE", 40);
 const SABJI_MAX_LEN = 80;
 
 export type ExtraItemsInput = Record<string, unknown>;

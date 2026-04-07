@@ -3,23 +3,39 @@ import { User } from "../models/User.js";
 
 export const usersRouter = Router();
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 usersRouter.post("/", async (req, res, next) => {
   try {
-    const { name, phone, address } = req.body as {
+    const { name, phone, email, address } = req.body as {
       name?: unknown;
       phone?: unknown;
+      email?: unknown;
       address?: unknown;
     };
-    if (!name || !phone) {
-      return res.status(400).json({ error: "name and phone are required" });
+    if (!name || !phone || !email) {
+      return res.status(400).json({ error: "name, phone, and email are required" });
+    }
+    const normalizedEmail = String(email).trim().toLowerCase();
+    if (!EMAIL_RE.test(normalizedEmail)) {
+      return res.status(400).json({ error: "email must be a valid email address" });
     }
     const user = await User.create({
       name: String(name).trim(),
       phone: String(phone).trim(),
+      email: normalizedEmail,
       address: address != null ? String(address).trim() : "",
     });
     res.status(201).json(user);
   } catch (e) {
+    if (
+      typeof e === "object" &&
+      e != null &&
+      "code" in e &&
+      (e as { code?: unknown }).code === 11000
+    ) {
+      return res.status(400).json({ error: "email already exists" });
+    }
     next(e);
   }
 });

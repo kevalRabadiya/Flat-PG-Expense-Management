@@ -10,6 +10,7 @@ import {
   formatThaliSummaryLine,
 } from "../utils/aggregateHistorySummary.js";
 import {
+  EXTRA_PRICES,
   formatOptimizedThaliLine,
   optimizeExtrasForRange,
 } from "../utils/optimizeExtrasBundles.js";
@@ -343,7 +344,7 @@ export default function HistoryPage() {
               </h3>
               <p className="small muted history-summary-optimize-lede">
                 Re-optimizes the total quantities implied by ordered thalis +
-                extras (roti/sabji/dal-rice), plus rice at ₹30 each.
+                extras (roti/sabji/dal-rice), plus rice at ₹{EXTRA_PRICES.rice} each.
               </p>
               {!optimize.hasDemand ? (
                 <p className="muted mb-0">Nothing to optimize in this range.</p>
@@ -380,9 +381,9 @@ export default function HistoryPage() {
                     <ul className="history-summary-optimize-list">
                       {optimize.leftoverRoti > 0 ? (
                         <li>
-                          Extra roti × {optimize.leftoverRoti}{" "}
+                          <strong>Extra roti × {optimize.leftoverRoti}</strong>{" "}
                           <span className="muted">
-                            (₹{optimize.leftoverRoti * 10})
+                            (₹{optimize.leftoverRoti * EXTRA_PRICES.roti})
                           </span>
                         </li>
                       ) : null}
@@ -390,7 +391,7 @@ export default function HistoryPage() {
                         <li>
                           Extra sabji × {optimize.leftoverSabji}{" "}
                           <span className="muted">
-                            (₹{optimize.leftoverSabji * 40})
+                            (₹{optimize.leftoverSabji * EXTRA_PRICES.sabji})
                           </span>
                         </li>
                       ) : null}
@@ -398,7 +399,7 @@ export default function HistoryPage() {
                         <li>
                           Extra dal-rice × {optimize.leftoverDal}{" "}
                           <span className="muted">
-                            (₹{optimize.leftoverDal * 40})
+                            (₹{optimize.leftoverDal * EXTRA_PRICES.dalRice})
                           </span>
                         </li>
                       ) : null}
@@ -406,7 +407,7 @@ export default function HistoryPage() {
                   )}
                   {optimize.riceCost > 0 ? (
                     <p className="mb-0">
-                      <strong>Rice:</strong> {summary.riceTotal} × ₹30 = ₹
+                      <strong>Rice:</strong> {summary.riceTotal} × ₹{EXTRA_PRICES.rice} = ₹
                       {optimize.riceCost}
                     </p>
                   ) : null}
