@@ -77,7 +77,7 @@ mongoose
   .connect(MONGODB_URI)
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`API listening on http://localhost:${PORT}`);
+      console.log(`API listening on ${process.env.NODE_ENV === "production" ?  `Production`  : `http://localhost:${PORT}`}`);
       console.log("Connected to MongoDB");
     });
   })
