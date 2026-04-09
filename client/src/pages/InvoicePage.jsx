@@ -176,6 +176,11 @@ export default function InvoicePage() {
     [rows]
   );
 
+  const displayedGrandTotal = useMemo(() => {
+    if (!grouped.length) return 0;
+    return grouped.reduce((s, g) => s + (Number(g.subtotal) || 0), 0);
+  }, [grouped]);
+
   const optimizedGrandTotal = useMemo(() => {
     if (!grouped.length) return 0;
     return grouped.reduce((s, g) => s + (Number(g.optimizedSubtotal) || 0), 0);
@@ -315,7 +320,9 @@ export default function InvoicePage() {
             <span className="invoice-grand-label">
               {filterUserId ? "Total (filtered)" : "Grand total (month)"}
             </span>
-            <span className="invoice-grand-amount">₹{grandTotal}</span>
+            <span className="invoice-grand-amount">
+              ₹{filterUserId ? displayedGrandTotal : grandTotal}
+            </span>
             <span className="invoice-grand-label">Optimized total (split)</span>
             <span className="invoice-grand-amount">₹{optimizedGrandTotal}</span>
           </div>
