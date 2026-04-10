@@ -1,16 +1,33 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createUser } from "../api";
+import { useAuth } from "../auth/useAuth.js";
 
 export default function AddUserPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [username, setUsername] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [address, setAddress] = useState("");
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
   const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (user?.role !== "admin") {
+    return (
+      <div className="page">
+        <div className="panel panel--error space-y-2">
+          <p className="error mb-0">Only admins can add users.</p>
+          <Link to="/" className="btn primary">
+            Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -20,12 +37,18 @@ export default function AddUserPage() {
       setError("Please enter a valid email address.");
       return;
     }
+    if (password.length < 4) {
+      setError("Password must be at least 4 characters.");
+      return;
+    }
     setSaving(true);
     try {
       await createUser({
+        username,
         name,
         phone,
         email: normalizedEmail,
+        password,
         address: address.trim() || undefined,
       });
       navigate("/users");
@@ -43,7 +66,8 @@ export default function AddUserPage() {
           <p className="eyebrow">Onboarding</p>
           <h1>New user</h1>
           <p className="lede muted">
-            Name and phone are required; address helps delivery runners.
+            Username (login), name, phone, and email are required; address
+            helps delivery runners.
           </p>
         </div>
         <Link to="/users" className="btn btn-ghost">
@@ -52,7 +76,17 @@ export default function AddUserPage() {
       </div>
       <form className="form card-elevated" onSubmit={onSubmit}>
         <label>
-          Name
+          Username <span className="muted">(login, globally unique)</span>
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            autoComplete="username"
+            placeholder="e.g. john_flatmate"
+          />
+        </label>
+        <label>
+          Display name
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -80,6 +114,17 @@ export default function AddUserPage() {
             required
             autoComplete="email"
             placeholder="name@example.com"
+          />
+        </label>
+        <label>
+          Password <span className="muted">(min 4 — they log in with this)</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={4}
+            autoComplete="new-password"
           />
         </label>
         <label>

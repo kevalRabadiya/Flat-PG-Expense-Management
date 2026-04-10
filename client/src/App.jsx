@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   Link,
   NavLink,
+  Outlet,
   Route,
   Routes,
   useLocation,
@@ -16,69 +17,19 @@ import InvoicePage from "./pages/InvoicePage.jsx";
 import HousekeeperPage from "./pages/HousekeeperPage.jsx";
 import LightBillPage from "./pages/LightBillPage.jsx";
 import ServerDownPage from "./pages/ServerDownPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
+import RegisterOrgPage from "./pages/RegisterOrgPage.jsx";
+import RegisterMemberPage from "./pages/RegisterMemberPage.jsx";
+import RequireAuth from "./components/RequireAuth.jsx";
+import NavUserMenu from "./components/NavUserMenu.jsx";
+import { useAuth } from "./auth/useAuth.js";
 import {
   API_DOWN_EVENT,
   SERVER_DOWN_PATH,
   isServerMarkedDown,
   pingHealthSilently,
 } from "./api.js";
-import { useTheme } from "./theme/useTheme.js";
 import "./App.css";
-
-function SunIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <circle cx="12" cy="12" r="4" />
-      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-    </svg>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-    </svg>
-  );
-}
-
-function ThemeToggle() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const isDark = resolvedTheme === "dark";
-  return (
-    <button
-      type="button"
-      className="theme-toggle"
-      onClick={() => setTheme(isDark ? "light" : "dark")}
-      aria-label={isDark ? "Switch to light theme" : "Switch to dark theme"}
-      title={isDark ? "Light mode" : "Dark mode"}
-    >
-      {isDark ? <SunIcon /> : <MoonIcon />}
-    </button>
-  );
-}
 
 function UtilitiesMenu() {
   const [open, setOpen] = useState(false);
@@ -143,13 +94,54 @@ function UtilitiesMenu() {
   );
 }
 
-function Layout({ children }) {
+function NavAuth() {
+  const { user } = useAuth();
+  if (!user) {
+    return (
+      <div className="nav-auth">
+        <Link to="/login" className="nav-link-plain">
+          Log in
+        </Link>
+        <Link to="/register" className="btn btn-sm primary">
+          Register
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <div className="nav-auth">
+      <NavUserMenu />
+    </div>
+  );
+}
+
+function navOrganizationLabel(u) {
+  if (!u) return "";
+  if (u.organizationKind === "user") return "PERSONAL";
+  const n = typeof u.organizationName === "string" ? u.organizationName.trim() : "";
+  if (n) return n;
+  if (u.organizationKind === "flat_pg") return "Flat / PG";
+  return "";
+}
+
+function Layout() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const orgLabel = navOrganizationLabel(user);
+
   return (
     <div className="app app-glass">
       <header className="nav nav-glass">
-        <Link to="/" className="brand">
-          Flat Expense
-        </Link>
+        <div className="nav-brand-block">
+          <Link to="/" className="brand">
+            Flat Expense
+          </Link>
+          {orgLabel ? (
+            <span className="nav-org-name" title={orgLabel}>
+              {orgLabel}
+            </span>
+          ) : null}
+        </div>
         <div className="nav-tools">
           <nav className="nav-links">
             <NavLink to="/" end>
@@ -159,13 +151,25 @@ function Layout({ children }) {
             <NavLink to="/history">History</NavLink>
             <UtilitiesMenu />
             <NavLink to="/invoice">Invoice</NavLink>
-            <NavLink to="/users">Users</NavLink>
+            {isAdmin ? (
+              <NavLink to="/users">Users</NavLink>
+            ) : null}
           </nav>
-          <ThemeToggle />
+          <NavAuth />
         </div>
       </header>
-      <main className="main">{children}</main>
+      <main className="main">
+        <Outlet />
+      </main>
     </div>
+  );
+}
+
+function ProtectedLayout() {
+  return (
+    <RequireAuth>
+      <Layout />
+    </RequireAuth>
   );
 }
 
@@ -204,8 +208,11 @@ export default function App() {
   }
 
   return (
-    <Layout>
-      <Routes>
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterOrgPage />} />
+      <Route path="/register/member" element={<RegisterMemberPage />} />
+      <Route element={<ProtectedLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="/users/new" element={<AddUserPage />} />
@@ -215,7 +222,7 @@ export default function App() {
         <Route path="/light-bill" element={<LightBillPage />} />
         <Route path="/order" element={<OrderPage />} />
         <Route path={SERVER_DOWN_PATH} element={<ServerDownPage />} />
-      </Routes>
-    </Layout>
+      </Route>
+    </Routes>
   );
 }

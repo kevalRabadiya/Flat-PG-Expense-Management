@@ -5,13 +5,11 @@ import {
   createOrder,
   deleteOrder,
   getOrderForUser,
-  getUsers,
   previewOrder,
   updateOrder,
 } from "../api";
+import { useAuth } from "../auth/useAuth.js";
 import { formatDateDDMMYYYY } from "../utils/dateFormat.js";
-
-const LAST_USER_KEY = "tiffin_lastUserId";
 
 function newRowId() {
   return globalThis.crypto?.randomUUID?.() ?? `r-${Date.now()}-${Math.random()}`;
@@ -58,12 +56,10 @@ function toNonNegIntField(v) {
 }
 
 export default function OrderPage() {
+  const { user, loading: authLoading } = useAuth();
+  const userId = user?._id ?? "";
   const [searchParams] = useSearchParams();
-  const paramUserId = searchParams.get("userId");
   const paramDate = searchParams.get("date");
-
-  const [users, setUsers] = useState([]);
-  const [userId, setUserId] = useState("");
   const [thaliRows, setThaliRows] = useState(emptyThaliRows);
   const [roti, setRoti] = useState(0);
   const [sabji1, setSabji1] = useState("");
@@ -84,9 +80,7 @@ export default function OrderPage() {
 
   const [previewTotal, setPreviewTotal] = useState(null);
   const [savedMessage, setSavedMessage] = useState(null);
-  const [loadError, setLoadError] = useState(null);
   const [actionError, setActionError] = useState(null);
-  const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingOrder, setLoadingOrder] = useState(false);
   const [busy, setBusy] = useState(false);
   const [hasSavedOrder, setHasSavedOrder] = useState(false);
@@ -139,7 +133,7 @@ export default function OrderPage() {
 
   /** Keep total in sync when thalis / extras change (preview uses latest payload). */
   useEffect(() => {
-    if (loadingUsers || loadingOrder) return;
+    if (authLoading || !userId || loadingOrder) return;
     const id = setTimeout(() => {
       const g = ++previewGenRef.current;
       previewOrder(payloadRef.current)
@@ -153,47 +147,7 @@ export default function OrderPage() {
         });
     }, 300);
     return () => clearTimeout(id);
-  }, [payloadBase, loadingUsers, loadingOrder]);
-
-  useEffect(() => {
-    let cancelled = false;
-    getUsers()
-      .then((list) => {
-        if (cancelled) return;
-        setUsers(list);
-        const fromUrl = paramUserId && list.some((u) => u._id === paramUserId);
-        const stored =
-          typeof localStorage !== "undefined"
-            ? localStorage.getItem(LAST_USER_KEY)
-            : null;
-        const fromStore = stored && list.some((u) => u._id === stored);
-        const initial =
-          (fromUrl && paramUserId) ||
-          (fromStore && stored) ||
-          (list[0] && list[0]._id) ||
-          "";
-        setUserId(initial);
-      })
-      .catch((e) => {
-        if (!cancelled) setLoadError(e.message);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingUsers(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [paramUserId]);
-
-  useEffect(() => {
-    if (userId) {
-      try {
-        localStorage.setItem(LAST_USER_KEY, userId);
-      } catch {
-        /* ignore */
-      }
-    }
-  }, [userId]);
+  }, [payloadBase, authLoading, userId, loadingOrder]);
 
   const applyOrderToForm = useCallback((order) => {
     if (!order) return;
@@ -228,7 +182,7 @@ export default function OrderPage() {
   }, []);
 
   useEffect(() => {
-    if (!userId || loadingUsers) return;
+    if (!userId || authLoading) return;
     let cancelled = false;
     setActionError(null);
     setSavedMessage(null);
@@ -261,7 +215,7 @@ export default function OrderPage() {
     return () => {
       cancelled = true;
     };
-  }, [userId, orderDate, loadingUsers, applyOrderToForm]);
+  }, [userId, orderDate, authLoading, applyOrderToForm]);
 
   function addThaliRow() {
     setThaliRows((prev) => [
@@ -303,7 +257,7 @@ export default function OrderPage() {
   async function onSave(e) {
     e.preventDefault();
     if (!userId) {
-      setActionError("Select a user.");
+      setActionError("You must be signed in to save.");
       return;
     }
     setActionError(null);
@@ -311,7 +265,6 @@ export default function OrderPage() {
     setBusy(true);
     try {
       const { totalAmount, order } = await createOrder({
-        userId,
         date: orderDate,
         ...payloadRef.current,
       });
@@ -328,7 +281,7 @@ export default function OrderPage() {
 
   async function onUpdate() {
     if (!userId) {
-      setActionError("Select a user.");
+      setActionError("You must be signed in to update.");
       return;
     }
     setActionError(null);
@@ -381,20 +334,7 @@ export default function OrderPage() {
     }
   }
 
-  if (loadError) {
-    return (
-      <div className="page">
-        <div className="panel panel--error space-y-2">
-          <p className="error mb-0">{loadError}</p>
-          <Link to="/" className="btn primary">
-            Home
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const actionsDisabled = busy || loadingOrder;
+  const actionsDisabled = busy || loadingOrder || authLoading || !userId;
 
   return (
     <div className="page page--wide order-page">
@@ -407,40 +347,33 @@ export default function OrderPage() {
             from the menu.
           </p>
         </div>
-        <Link to="/users" className="btn btn-ghost">
-          Users
-        </Link>
+        {user?.role === "admin" ? (
+          <Link to="/users" className="btn btn-ghost">
+            Users
+          </Link>
+        ) : null}
       </div>
 
-      {loadingUsers ? (
+      {authLoading ? (
         <div className="loading-block">
-          <Loader label="Loading users…" />
+          <Loader label="Loading account…" />
         </div>
       ) : null}
 
-      {!loadingUsers ? (
+      {!authLoading && userId ? (
       <form className="form order-form order-form--enhanced card-elevated glass-surface" onSubmit={onCalculate}>
         <section className="form-section order-section order-section--meta glass-surface">
           <h2 className="form-section-title">Who &amp; when</h2>
           <div className="grid-2">
-            <label>
-              User
-              <select
-                value={userId}
-                onChange={(e) => setUserId(e.target.value)}
-                disabled={loadingUsers || users.length === 0}
-              >
-                {users.length === 0 ? (
-                  <option value="">No users — add one first</option>
-                ) : (
-                  users.map((u) => (
-                    <option key={u._id} value={u._id}>
-                      {u.name} ({u.phone})
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
+            <div className="order-self-summary">
+              <span className="small muted">Ordering as</span>
+              <p className="mb-0">
+                <strong>{user?.name}</strong>
+                {user?.phone ? (
+                  <span className="muted"> · {user.phone}</span>
+                ) : null}
+              </p>
+            </div>
             <label>
               Date
               <input
@@ -631,7 +564,7 @@ export default function OrderPage() {
             type="button"
             className="btn"
             onClick={onSave}
-            disabled={actionsDisabled || !userId}
+            disabled={actionsDisabled}
           >
             {hasSavedOrder ? "Save order (replace)" : "Save order"}
           </button>
@@ -639,7 +572,7 @@ export default function OrderPage() {
             type="button"
             className="btn"
             onClick={onUpdate}
-            disabled={actionsDisabled || !userId || !hasSavedOrder}
+            disabled={actionsDisabled || !hasSavedOrder}
           >
             Update order
           </button>
@@ -647,12 +580,14 @@ export default function OrderPage() {
             type="button"
             className="btn danger"
             onClick={onDelete}
-            disabled={actionsDisabled || !userId || !hasSavedOrder}
+            disabled={actionsDisabled || !hasSavedOrder}
           >
             Delete order
           </button>
         </div>
       </form>
+      ) : !authLoading ? (
+        <p className="muted">Could not resolve your account. Try logging in again.</p>
       ) : null}
     </div>
   );

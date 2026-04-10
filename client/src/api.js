@@ -1,5 +1,72 @@
-const API_BASE =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "http://localhost:5000";
+function resolveApiBase() {
+  const raw = import.meta.env.VITE_API_URL?.trim() || "";
+  // Allow relative API bases (e.g. "/api") for same-origin deployments.
+  if (raw.startsWith("/")) return raw.replace(/\/$/, "");
+  // Dev: same-origin via Vite proxy so LAN/mobile hits :5173, not unreachable :5000/localhost.
+  if (import.meta.env.DEV) {
+    const pointsAtLocalApi =
+      !raw || /localhost|127\.0\.0\.1/i.test(raw);
+    if (pointsAtLocalApi) return "";
+  }
+  if (!raw) {
+    if (typeof window === "undefined") return "http://localhost:5000";
+    // Production fallback: same-origin avoids CORS when app/API are behind one domain/proxy.
+    if (!import.meta.env.DEV) return "";
+    const h = window.location.hostname;
+    const isLocal = h === "localhost" || h === "127.0.0.1";
+    if (isLocal) return "http://localhost:5000";
+    const proto = window.location.protocol === "https:" ? "https:" : "http:";
+    return `${proto}//${h}:5000`;
+  }
+  const normalized = raw.replace(/\/$/, "");
+  if (typeof window === "undefined") return normalized;
+  try {
+    const u = new URL(normalized);
+    const pageHost = window.location.hostname;
+    const isLocalApiHost =
+      u.hostname === "localhost" || u.hostname === "127.0.0.1";
+    const isLocalPageHost =
+      pageHost === "localhost" || pageHost === "127.0.0.1";
+    if (isLocalApiHost && !isLocalPageHost) {
+      u.hostname = pageHost;
+      return u.toString().replace(/\/$/, "");
+    }
+  } catch {
+    // keep normalized
+  }
+  return normalized;
+}
+
+const API_BASE = resolveApiBase();
+
+const TOKEN_KEY = "tiffin_token";
+
+export function getStoredToken() {
+  if (typeof localStorage === "undefined") return null;
+  return localStorage.getItem(TOKEN_KEY);
+}
+
+export function setStoredToken(token) {
+  if (typeof localStorage === "undefined") return;
+  if (token) localStorage.setItem(TOKEN_KEY, token);
+  else localStorage.removeItem(TOKEN_KEY);
+}
+
+/** Headers that skip attaching Bearer (public or non-user APIs). */
+function authHeaderForPath(path) {
+  const token = getStoredToken();
+  if (!token) return {};
+  const noBearer =
+    path === "/health" ||
+    path === "/api/orders/preview" ||
+    path === "/api/auth/register-org" ||
+    path === "/api/auth/register-member" ||
+    path === "/api/auth/login" ||
+    path.startsWith("/api/housekeeper") ||
+    path.startsWith("/api/light-bill");
+  if (noBearer) return {};
+  return { Authorization: `Bearer ${token}` };
+}
 const SERVER_DOWN_PATH = "/server-down";
 const API_DOWN_EVENT = "api:server-down";
 const API_RECOVERED_EVENT = "api:server-recovered";
@@ -31,10 +98,6 @@ export function clearServerDownMark() {
   dispatchWindowEvent(API_RECOVERED_EVENT);
 }
 
-function isServerUnavailableStatus(status) {
-  return status === 502 || status === 503 || status === 504;
-}
-
 async function handleJson(res) {
   if (res.status === 204) {
     if (!res.ok) throw new Error(res.statusText || "Request failed");
@@ -54,19 +117,55 @@ async function handleJson(res) {
   return data;
 }
 
-async function request(path, options) {
+async function request(path, options = {}) {
+  const mergedHeaders = {
+    ...authHeaderForPath(path),
+    ...(options.headers && typeof options.headers === "object"
+      ? options.headers
+      : {}),
+  };
+  const fetchOptions = { ...options, headers: mergedHeaders };
   try {
-    const res = await fetch(`${API_BASE}${path}`, options);
-    if (isServerUnavailableStatus(res.status)) {
-      markServerDown();
-    }
+    const res = await fetch(`${API_BASE}${path}`, fetchOptions);
     return await handleJson(res);
   } catch (err) {
     if (err instanceof TypeError) {
-      markServerDown();
+      const host =
+        typeof window !== "undefined" ? window.location.origin : "unknown origin";
+      throw new Error(
+        `Network error calling ${API_BASE}${path} from ${host}. Check API URL/CORS and that backend is reachable.`
+      );
     }
     throw err;
   }
+}
+
+export function loginRequest(body) {
+  return request("/api/auth/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function registerOrgRequest(body) {
+  return request("/api/auth/register-org", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function registerMemberRequest(body) {
+  return request("/api/auth/register-member", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function authMe() {
+  return request("/api/auth/me");
 }
 
 export function getUsers() {
@@ -79,6 +178,25 @@ export function createUser(body) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+export function patchMyUsername(username) {
+  return request("/api/users/me/username", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username }),
+  });
+}
+
+export function patchUserUsername(userId, username) {
+  return request(
+    `/api/users/${encodeURIComponent(userId)}/username`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username }),
+    }
+  );
 }
 
 export function previewOrder(body) {
@@ -161,12 +279,17 @@ export function getServerHealth() {
   return request("/health");
 }
 
-/** Background keep-alive; does not call markServerDown on failure. */
+/** Background keep-alive; owns server-down signaling. */
 export async function pingHealthSilently() {
   try {
-    await fetch(`${API_BASE}/health`, { method: "GET" });
+    const res = await fetch(`${API_BASE}/health`, { method: "GET" });
+    if (res.ok) {
+      clearServerDownMark();
+      return;
+    }
+    markServerDown();
   } catch {
-    /* ignore */
+    markServerDown();
   }
 }
 

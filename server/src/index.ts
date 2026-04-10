@@ -2,6 +2,7 @@ import "dotenv/config";
 import express, { type ErrorRequestHandler } from "express";
 import cors from "cors";
 import mongoose from "mongoose";
+import { authRouter } from "./routes/auth.js";
 import { usersRouter } from "./routes/users.js";
 import { ordersRouter } from "./routes/orders.js";
 import { housekeeperRouter } from "./routes/housekeeper.js";
@@ -9,6 +10,8 @@ import { lightBillRouter } from "./routes/lightBill.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const PORT = Number(process.env.PORT) || 5000;
+/** Listen on all interfaces so LAN/mobile can reach the API (default). Set HOST=127.0.0.1 to bind loopback only. */
+const HOST = process.env.HOST || "0.0.0.0";
 
 if (!MONGODB_URI) {
   console.error("MONGODB_URI is required");
@@ -18,24 +21,8 @@ if (!MONGODB_URI) {
 const app = express();
 
 function isAllowedCorsOrigin(origin: string | undefined) {
-  if (!origin) return true;
-  try {
-    const u = new URL(origin);
-    if (u.protocol !== "http:" && u.protocol !== "https:") return false;
-    const host = u.hostname;
-    if (host === "localhost" || host === "127.0.0.1") return true;
-    // Render web services (e.g. https://ordersplit.onrender.com and other *.onrender.com sites)
-    if (u.protocol === "https:" && host.endsWith(".onrender.com")) return true;
-    // Vercel deployments (preview + production *.vercel.app)
-    if (u.protocol === "https:" && host.endsWith(".vercel.app")) return true;
-  } catch {
-    return false;
-  }
-  const extra = process.env.CORS_ORIGINS?.split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (extra?.length && extra.includes(origin)) return true;
-  return false;
+  // Allow all origins (as requested).
+  return true;
 }
 
 app.use(
@@ -62,6 +49,7 @@ app.get("/health", (_req, res) => {
   });
 });
 
+app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/orders", ordersRouter);
 app.use("/api/housekeeper", housekeeperRouter);
@@ -76,8 +64,12 @@ app.use(errorHandler);
 mongoose
   .connect(MONGODB_URI)
   .then(() => {
-    app.listen(PORT, () => {
-      console.log(`API listening on ${process.env.NODE_ENV === "production" ?  `Production`  : `http://localhost:${PORT}`}`);
+    app.listen(PORT, HOST, () => {
+      const where =
+        HOST === "0.0.0.0" || HOST === "::"
+          ? `http://localhost:${PORT} (all interfaces)`
+          : `http://${HOST}:${PORT}`;
+      console.log(`API listening on ${where}`);
       console.log("Connected to MongoDB");
     });
   })
