@@ -4,6 +4,12 @@ const monthKeyRe = /^\d{4}-\d{2}$/;
 
 const lightBillSchema = new mongoose.Schema(
   {
+    organizationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+      required: true,
+      index: true,
+    },
     fromMonthKey: {
       type: String,
       required: true,
@@ -25,6 +31,9 @@ const lightBillSchema = new mongoose.Schema(
   { timestamps: true, versionKey: false }
 );
 
-lightBillSchema.index({ fromMonthKey: 1, toMonthKey: 1 }, { unique: true });
+lightBillSchema.index(
+  { organizationId: 1, fromMonthKey: 1, toMonthKey: 1 },
+  { unique: true }
+);
 
 export const LightBill = mongoose.model("LightBill", lightBillSchema);

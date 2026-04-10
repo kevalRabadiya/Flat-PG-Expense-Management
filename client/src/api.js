@@ -61,9 +61,7 @@ function authHeaderForPath(path) {
     path === "/api/orders/preview" ||
     path === "/api/auth/register-org" ||
     path === "/api/auth/register-member" ||
-    path === "/api/auth/login" ||
-    path.startsWith("/api/housekeeper") ||
-    path.startsWith("/api/light-bill");
+    path === "/api/auth/login";
   if (noBearer) return {};
   return { Authorization: `Bearer ${token}` };
 }

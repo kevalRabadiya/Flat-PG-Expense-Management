@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { HousekeeperAttendance } from "../models/HousekeeperAttendance.js";
+import { requireAuth } from "../middleware/auth.js";
 
 export const housekeeperRouter = Router();
 
@@ -19,8 +20,9 @@ function parseDateKey(value: unknown, fallback: string) {
   return s;
 }
 
-housekeeperRouter.get("/", async (req, res, next) => {
+housekeeperRouter.get("/", requireAuth, async (req, res, next) => {
   try {
+    const orgId = req.auth!.organizationId;
     const q = req.query as Record<string, unknown>;
     const today = todayDateKey();
     let from: string;
@@ -35,6 +37,7 @@ housekeeperRouter.get("/", async (req, res, next) => {
       return res.status(400).json({ error: "from must be on or before to" });
     }
     const rows = await HousekeeperAttendance.find({
+      organizationId: orgId,
       dateKey: { $gte: from, $lte: to },
       present: true,
     })
@@ -46,8 +49,9 @@ housekeeperRouter.get("/", async (req, res, next) => {
   }
 });
 
-housekeeperRouter.put("/:dateKey", async (req, res, next) => {
+housekeeperRouter.put("/:dateKey", requireAuth, async (req, res, next) => {
   try {
+    const orgId = req.auth!.organizationId;
     const { dateKey } = req.params;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateKey))) {
       return res.status(400).json({ error: "dateKey must be YYYY-MM-DD" });
@@ -58,13 +62,13 @@ housekeeperRouter.put("/:dateKey", async (req, res, next) => {
     }
 
     if (!present) {
-      await HousekeeperAttendance.deleteOne({ dateKey });
+      await HousekeeperAttendance.deleteOne({ organizationId: orgId, dateKey });
       return res.json({ dateKey, present: false });
     }
 
     const row = await HousekeeperAttendance.findOneAndUpdate(
-      { dateKey },
-      { $set: { dateKey, present: true } },
+      { organizationId: orgId, dateKey },
+      { $set: { organizationId: orgId, dateKey, present: true } },
       { new: true, upsert: true, runValidators: true }
     ).lean();
 

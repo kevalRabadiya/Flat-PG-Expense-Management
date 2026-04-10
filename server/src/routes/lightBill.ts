@@ -1,12 +1,14 @@
 import { Router } from "express";
 import { LightBill } from "../models/LightBill.js";
+import { requireAuth } from "../middleware/auth.js";
 
 export const lightBillRouter = Router();
 
 const MONTH_KEY_RE = /^\d{4}-\d{2}$/;
 
-lightBillRouter.get("/", async (req, res, next) => {
+lightBillRouter.get("/", requireAuth, async (req, res, next) => {
   try {
+    const orgId = req.auth!.organizationId;
     const raw = req.query.year;
     const year =
       typeof raw === "string" ? Number.parseInt(raw, 10) : Number.NaN;
@@ -16,6 +18,7 @@ lightBillRouter.get("/", async (req, res, next) => {
     const yStart = `${year}-01`;
     const yEnd = `${year}-12`;
     const rows = await LightBill.find({
+      organizationId: orgId,
       fromMonthKey: { $lte: yEnd },
       toMonthKey: { $gte: yStart },
     })
@@ -27,8 +30,9 @@ lightBillRouter.get("/", async (req, res, next) => {
   }
 });
 
-lightBillRouter.put("/", async (req, res, next) => {
+lightBillRouter.put("/", requireAuth, async (req, res, next) => {
   try {
+    const orgId = req.auth!.organizationId;
     const body = req.body as {
       fromMonthKey?: unknown;
       toMonthKey?: unknown;
@@ -54,8 +58,8 @@ lightBillRouter.put("/", async (req, res, next) => {
     }
 
     const row = await LightBill.findOneAndUpdate(
-      { fromMonthKey, toMonthKey },
-      { $set: { fromMonthKey, toMonthKey, amount: n } },
+      { organizationId: orgId, fromMonthKey, toMonthKey },
+      { $set: { organizationId: orgId, fromMonthKey, toMonthKey, amount: n } },
       { new: true, upsert: true, runValidators: true }
     ).lean();
 
