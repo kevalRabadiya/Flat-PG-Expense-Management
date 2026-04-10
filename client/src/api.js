@@ -1,3 +1,11 @@
+/** http→https for Render: redirects can drop Authorization on cross-origin fetch. */
+function httpsForRenderHost(urlStr) {
+  if (/^http:\/\/[^/]*\.onrender\.com/i.test(urlStr)) {
+    return urlStr.replace(/^http:\/\//i, "https://");
+  }
+  return urlStr;
+}
+
 function resolveApiBase() {
   const raw = import.meta.env.VITE_API_URL?.trim() || "";
   // Allow relative API bases (e.g. "/api") for same-origin deployments.
@@ -18,7 +26,7 @@ function resolveApiBase() {
     const proto = window.location.protocol === "https:" ? "https:" : "http:";
     return `${proto}//${h}:5000`;
   }
-  const normalized = raw.replace(/\/$/, "");
+  const normalized = httpsForRenderHost(raw.replace(/\/$/, ""));
   if (typeof window === "undefined") return normalized;
   try {
     const u = new URL(normalized);
@@ -38,6 +46,16 @@ function resolveApiBase() {
 }
 
 const API_BASE = resolveApiBase();
+
+if (
+  import.meta.env.PROD &&
+  typeof window !== "undefined" &&
+  API_BASE === ""
+) {
+  console.warn(
+    "[API] VITE_API_URL was not set at build time. Set VITE_API_URL=https://your-api.onrender.com in Vercel (Production) and redeploy. Network tab should show requests to Render with Authorization: Bearer …"
+  );
+}
 
 const TOKEN_KEY = "tiffin_token";
 
@@ -82,6 +100,23 @@ function authHeaderForPath(path) {
   if (noBearer) return {};
   return { Authorization: `Bearer ${token}` };
 }
+
+/** Drop any caller-supplied Authorization so it cannot override or clear our Bearer. */
+function withoutAuthorizationHeader(headers) {
+  if (!headers || typeof headers !== "object") return {};
+  const out =
+    typeof Headers !== "undefined" && headers instanceof Headers
+      ? Object.fromEntries(headers.entries())
+      : { ...headers };
+  for (const key of Object.keys(out)) {
+    if (key.toLowerCase() === "authorization") {
+      delete out[key];
+      break;
+    }
+  }
+  return out;
+}
+
 const SERVER_DOWN_PATH = "/server-down";
 const API_DOWN_EVENT = "api:server-down";
 const API_RECOVERED_EVENT = "api:server-recovered";
@@ -134,10 +169,8 @@ async function handleJson(res) {
 
 async function request(path, options = {}) {
   const mergedHeaders = {
+    ...withoutAuthorizationHeader(options.headers),
     ...authHeaderForPath(path),
-    ...(options.headers && typeof options.headers === "object"
-      ? options.headers
-      : {}),
   };
   const fetchOptions = { ...options, headers: mergedHeaders };
   try {
