@@ -4,98 +4,111 @@ Internal tool for entering daily thali orders, built with a **React (Vite)** fro
 
 ## Project overview
 
-- Primary workflow: create users, place/update daily orders, and review totals through dashboard/history/invoice views.
+- Primary workflow: sign in, create or join an organization, manage members (admins), place/update daily orders, and review totals through dashboard/history/invoice views.
 - Frontend: `client/` (Vite SPA).
 - Backend: `server/` (TypeScript source, compiled to `server/dist/` for production).
 
 ## Feature highlights
 
-### 1) User management
+### 1) Authentication and organizations
 
-- Add and maintain user records (`name`, `phone`, optional `address`).
-- Start a new order directly from user context.
-- View user-specific history and invoice totals through shared filtering.
+- **Register organization** (`/register`): first user is **admin**; kind `flat_pg` or `user`. **Flat/PG** may set an optional org name; **User (personal)** does not collect org name and stores organization name from the user's own name. Admin receives an **invite code** for adding members.
+- **Register as member** (`/register/member`): join with invite code; **login username** (separate from display **name**) is required and globally unique (case-insensitive).
+- **Login** (`/login`): **login username + password** (not your display name). Usernames are stored normalized (lowercase) and globally unique. JWT stored in `localStorage` as `tiffin_token` and sent as `Authorization: Bearer` on protected API calls.
+- **Change username:** account menu (self) or **Users** page (admin, same org). `PATCH /api/users/me/username` or `PATCH /api/users/:id/username`.
+- **Multi-tenant data:** users and orders are scoped by **organization**. All members can **read** org-wide order data (history, invoice, home); **create/update/delete orders** are only allowed for the **signed-in user’s** own `userId`.
 
-### 2) Order lifecycle
+### 2) User management
 
-- Create orders per user and date using multiple thali selections plus optional extras.
+- Admins can add members with **username**, display **name**, email, and password (`/users`, `/users/new`). Listing users is available to any signed-in org member.
+- User records include `username` (login), `name` (display), `phone`, `email`, optional `address`, `role`, and `organizationId`.
+
+### 3) Order lifecycle
+
+- Create orders for **your account** and date using multiple thali selections plus optional extras.
 - Preview total before saving (`Calculate` uses pricing logic without DB write).
 - Save as upsert for that user/date, update existing orders, or soft-delete.
 
-### 3) Reporting and analytics
+### 4) Reporting and analytics
 
 - Home dashboard shows previous month totals and visual breakdowns.
 - History supports date-range and user filtering for tabular review.
 - Invoice groups monthly totals by user with subtotal and grand total views.
 
-### 4) Theme and preferences
+### 5) Theme and preferences
 
-- System/Light/Dark theme toggle in header.
-- Last selected user is remembered for faster order entry.
+- Light/Dark appearance from the **account menu** (avatar) in the header; preference stored in `localStorage` under `tiffin_theme`.
 
 ## Feature-wise behavior (UI to API mapping)
 
+### Authentication
+
+- **UI routes:** `/login`, `/register`, `/register/member`.
+- **API:** `POST /api/auth/register-org`, `POST /api/auth/register-member`, `POST /api/auth/login`, `GET /api/auth/me` (Bearer).
+
 ### User management
 
-- **UI routes:** `/users`, `/users/new`.
-- **Actions:** create user, list users, open order flow per user.
-- **API support:** `POST /api/users`, `GET /api/users`, `GET /api/users/:id`.
+- **UI routes:** `/users`, `/users/new` (navbar links for **admins only**).
+- **Actions:** admin creates member with username + password; list users in org; admin can change member usernames.
+- **API support:** `POST /api/users` (admin only), `PATCH /api/users/me/username`, `PATCH /api/users/:id/username` (admin), `GET /api/users`, `GET /api/users/:id` (Bearer).
 
 ### Order lifecycle
 
-- **UI route:** Order page (supports `?userId=` and optional `?date=YYYY-MM-DD`).
-- **Actions:** choose user/date, add/remove unlimited thali lines, add extras, calculate, save, update, delete.
+- **UI route:** Order page for the **current user** (optional `?date=YYYY-MM-DD`).
+- **Actions:** add/remove unlimited thali lines, add extras, calculate, save, update, delete (self only).
 - **API support:**
-  - `POST /api/orders/preview` for calculation only.
-  - `POST /api/orders` to save/replace order for the day (upsert behavior).
-  - `PUT /api/orders/:userId` to update only when an order already exists.
-  - `GET /api/orders/:userId?date=YYYY-MM-DD` to load a single order.
-  - `DELETE /api/orders/:userId?date=YYYY-MM-DD` for soft delete (`deletedAt`).
+  - `POST /api/orders/preview` — no JWT; calculation only.
+  - `POST /api/orders` — Bearer; body `userId` is ignored; order is for the authenticated user.
+  - `PUT /api/orders/:userId` — Bearer; only when `:userId` matches the token user.
+  - `GET /api/orders/:userId?date=YYYY-MM-DD` — Bearer; read any org member’s order.
+  - `DELETE /api/orders/:userId?date=YYYY-MM-DD` — Bearer; self-only.
 
 ### Reporting and analytics
 
 - **UI routes:** `/` (home), history page (navbar), invoice page (navbar).
-- **Actions:**
-  - Home: previous month order count and expense, daily expense chart, top users chart, recent orders, and quick links.
-  - History: `from/to` range with optional user filter.
-  - Invoice: month + optional user filter; per-user subtotals plus grand total.
-- **API support:** `GET /api/orders?from=&to=&userId=` for list/filter data powering history and invoice.
+- **API support:** `GET /api/orders?from=&to=&userId=` (Bearer) — org-wide list unless filtered by `userId`.
 
-### Theme and preferences
+### HouseKeeper and light bill
 
-- **UI behavior:** theme stored in `localStorage` under `tiffin_theme`.
-- **User convenience:** last selected order user can be reused from `localStorage`.
+- **API:** `GET`/`PUT` `/api/housekeeper`, `GET`/`PUT` `/api/light-bill` — not JWT-protected (same as before auth).
 
 ## API summary
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/api/users` | Create user `{ name, phone, address? }`. |
-| `GET` | `/api/users` | List users. |
-| `GET` | `/api/users/:id` | Get one user. |
-| `POST` | `/api/orders/preview` | Calculate `{ totalAmount }` from `{ thaliIds, extraItems }` without DB write. Legacy `thaliId` is accepted as a single selection. |
-| `GET` | `/api/orders?from=&to=&userId=` | List orders by date range (`YYYY-MM-DD`) with optional `userId`. Defaults: `from=today`, `to=from`. Requires `from <= to`. Rows include merged `thaliIds` and user snapshot (`name`, `phone`). |
-| `POST` | `/api/orders` | Save/replace order for date using `{ userId, thaliIds, extraItems, date? }`. |
-| `PUT` | `/api/orders/:userId` | Update existing order for date using `{ thaliIds, extraItems, date? }`; returns `404` if none exists. |
-| `DELETE` | `/api/orders/:userId?date=YYYY-MM-DD` | Soft-delete order (`deletedAt` set); returns `404` if missing/already deleted and `204` on success. |
-| `GET` | `/api/orders/:userId?date=YYYY-MM-DD` | Get order for user/date (defaults to today if omitted), always returning merged `thaliIds`. |
-| `GET` | `/api/light-bill?year=YYYY` | List light-bill periods overlapping that calendar year (`fromMonthKey` / `toMonthKey` inclusive, `amount`). |
-| `PUT` | `/api/light-bill` | Upsert period `{ fromMonthKey, toMonthKey, amount }` (`YYYY-MM` keys, `from` ≤ `to`). |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/api/auth/register-org` | — | Create org + admin `{ organizationKind, organizationName?, username, name, phone, email, password, address? }`. |
+| `POST` | `/api/auth/register-member` | — | Join org `{ inviteCode, username, name, phone, email, password, address? }`. |
+| `POST` | `/api/auth/login` | — | `{ username, password }` → `{ token, user }`. |
+| `GET` | `/api/auth/me` | Bearer | Current user (includes `organizationName`; admins may include `inviteCode`). |
+| `POST` | `/api/users` | Bearer (admin) | Create member `{ username, name, phone, email, password, address? }`. |
+| `PATCH` | `/api/users/me/username` | Bearer | Body `{ username }` — update own login username. |
+| `PATCH` | `/api/users/:id/username` | Bearer (admin) | Body `{ username }` — update member username (same org). |
+| `GET` | `/api/users` | Bearer | List users in caller’s organization. |
+| `GET` | `/api/users/:id` | Bearer | Get one user (same org). |
+| `POST` | `/api/orders/preview` | — | `{ totalAmount }` from `{ thaliIds, extraItems }`. Legacy `thaliId` accepted. |
+| `GET` | `/api/orders?from=&to=&userId=` | Bearer | Org-wide orders by date range; optional `userId` filter. |
+| `POST` | `/api/orders` | Bearer | Upsert order for **token user**; `{ thaliIds, extraItems, date? }`. |
+| `PUT` | `/api/orders/:userId` | Bearer | Update if `:userId` is token user. |
+| `DELETE` | `/api/orders/:userId?date=` | Bearer | Soft-delete; self-only. |
+| `GET` | `/api/orders/:userId?date=` | Bearer | Get one order (org member). |
+| `GET` | `/api/housekeeper?from=&to=` | — | HouseKeeper rows in range. |
+| `PUT` | `/api/housekeeper/:dateKey` | — | `{ present }`. |
+| `GET` | `/api/light-bill?year=` | — | Light-bill periods for year. |
+| `PUT` | `/api/light-bill` | — | Upsert `{ fromMonthKey, toMonthKey, amount }`. |
 
 ## Data model and rules
 
-- **Users collection (`users`):** `name`, `phone`, `address`, `createdAt`.
-- **Orders collection (`orders`):**
+- **Organizations (`organizations`):** `kind` (`flat_pg` | `user`), `name`, `inviteCode`, timestamps.
+- **Users (`users`):** `username` (normalized login handle, globally unique), `name` (display), `phone`, `email` (unique), `passwordHash`, `address`, `organizationId`, `role` (`admin` | `member`), `createdAt`.
+- **Orders (`orders`):**
   - `dateKey` is a `YYYY-MM-DD` string used as calendar-date key.
-  - Uniqueness behavior is one order per user per day (`userId + dateKey` upsert semantics).
-  - Delete behavior is soft delete (`deletedAt`), hidden from lists/single GET until saved again.
+  - Uniqueness: one order per user per day (`userId + dateKey` upsert semantics).
+  - Delete: soft delete (`deletedAt`), hidden from lists/single GET until saved again.
 - **Thali selections:**
   - `thaliIds` is an unbounded array of integers `1` to `5`.
   - Total thali amount is the sum of selected menu prices (duplicates allowed).
   - Legacy docs with single `thaliId` are merged into `thaliIds` on read.
-- **Date format rule:**
-  - API and `<input type="date">` use `YYYY-MM-DD`.
-  - UI display uses `DD-MM-YYYY`.
+- **Date format:** API and `<input type="date">` use `YYYY-MM-DD`; UI display may use `DD-MM-YYYY`.
 
 ## Prerequisites
 
@@ -109,6 +122,7 @@ Internal tool for entering daily thali orders, built with a **React (Vite)** fro
 Copy [`server/.env.example`](server/.env.example) to `server/.env`.
 
 - `MONGODB_URI` (**required**): local example `mongodb://127.0.0.1:27017/tiffin`; for Atlas, use a URI ending with `/tiffin`.
+- `JWT_SECRET` (**required in production**): at least **16** characters; signs JWTs. In development a fallback may be used if unset. Tokens do not include `exp` (non-expiring until logout or secret change).
 - `PORT` (optional): defaults to `5000`.
 - `CORS_ORIGINS` (optional): comma-separated full origins (no trailing slash) for custom domains, for example `https://app.example.com`.
 
@@ -125,6 +139,12 @@ Atlas note: allow your client IP (or `0.0.0.0/0` for quick testing) in Network A
 Copy [`client/.env.example`](client/.env.example) to `client/.env` if overrides are needed.
 
 - `VITE_API_URL`: API origin (default in code is `http://localhost:5000`). For deployed API, set this before `npm run build`.
+
+See [`docs/config/env.md`](docs/config/env.md) for pricing-related variables.
+
+### Upgrading an existing database
+
+Users need a unique `username` for login.
 
 ## Run locally
 
@@ -154,6 +174,15 @@ npm run dev
 
 Open the Vite URL (usually `http://localhost:5173`).
 
-## Current limitation
+## Validation (build / lint)
 
-- Authentication/authorization is not implemented in this version.
+There is no `npm test` suite in this repo. Typical checks:
+
+```bash
+cd server && npm run build
+cd client && npm run lint && npm run build
+```
+
+## Documentation
+
+Product and API details live under [`docs/README.md`](docs/README.md).

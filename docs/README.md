@@ -14,17 +14,18 @@
 - `server/src/pricing.ts`
 
 ## Last updated
-- 2026-04-07
+- 2026-04-10
 
 ## Copy-paste summary
 ```text
-This app manages daily tiffin orders, computes optimized bundle costs using thali bundles, splits optimized totals user-wise per day, supports monthly invoice views, and tracks HouseKeeper attendance/cost. Use docs/features for UI behavior, docs/algorithms for optimization/split logic, docs/api for endpoints, and docs/config for env setup.
+This app manages daily tiffin orders with JWT auth and organizations (org-wide read, self-only order writes), login by globally unique login username (separate from display name, case-insensitive) plus password with unique email on signup, username changes via self or admin PATCH routes, computes optimized bundle costs using thali bundles, splits optimized totals user-wise per day, supports monthly invoice views, and tracks HouseKeeper attendance/cost. Use docs/features for UI behavior (including auth), docs/algorithms for optimization/split logic, docs/api for endpoints, and docs/config for env setup.
 ```
 
 ## Navigation
 - Architecture
   - [`docs/architecture/system-overview.md`](architecture/system-overview.md)
 - Features
+  - [`docs/features/auth.md`](features/auth.md)
   - [`docs/features/home.md`](features/home.md)
   - [`docs/features/order.md`](features/order.md)
   - [`docs/features/history.md`](features/history.md)

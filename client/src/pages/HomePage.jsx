@@ -23,6 +23,7 @@ import {
   computeEqualSplitByDay,
 } from "../utils/dailyOptimization.js";
 import { useTheme } from "../theme/useTheme.js";
+import { useAuth } from "../auth/useAuth.js";
 
 function todayISO() {
   const d = new Date();
@@ -207,6 +208,8 @@ function useChartThemeColors() {
 }
 
 export default function HomePage() {
+  const { user } = useAuth();
+  const selfId = user?._id ? String(user._id) : "";
   const chartColors = useChartThemeColors();
   const [chartMonth, setChartMonth] = useState(currentMonthValue);
   const [users, setUsers] = useState([]);
@@ -1001,12 +1004,14 @@ export default function HomePage() {
                   </div>
                   <div className="home-recent-meta">
                     <span className="home-recent-amount">₹{row.totalAmount}</span>
-                    <Link
-                      to={`/order?userId=${encodeURIComponent(uid)}&date=${encodeURIComponent(row.dateKey)}`}
-                      className="btn btn-sm btn-ghost"
-                    >
-                      Open
-                    </Link>
+                    {selfId && uid === selfId ? (
+                      <Link
+                        to={`/order?date=${encodeURIComponent(row.dateKey)}`}
+                        className="btn btn-sm btn-ghost"
+                      >
+                        Open
+                      </Link>
+                    ) : null}
                   </div>
                 </li>
               );
@@ -1048,10 +1053,7 @@ export default function HomePage() {
                     ) : null}
                     <span className="small muted home-user-badge">{badge}</span>
                   </div>
-                  <Link
-                    to={`/order?userId=${encodeURIComponent(u._id)}`}
-                    className="btn primary btn-sm"
-                  >
+                  <Link to="/order" className="btn primary btn-sm">
                     New order
                   </Link>
                 </li>

@@ -4,6 +4,7 @@ import mongoose from "mongoose";
 import { HttpError, isHttpError } from "../httpError.js";
 import { User } from "../models/User.js";
 import { Order } from "../models/Order.js";
+import { requireAuth } from "../middleware/auth.js";
 import {
   calculateTotal,
   mapPricingErrorToHttp,
@@ -12,6 +13,13 @@ import {
 } from "../pricing.js";
 
 export const ordersRouter = Router();
+
+async function organizationUserIds(organizationId: string): Promise<string[]> {
+  const users = await User.find({ organizationId })
+    .select("_id")
+    .lean();
+  return users.map((u) => u._id.toString());
+}
 
 type OrderBody = Record<string, unknown>;
 
@@ -179,14 +187,14 @@ ordersRouter.post("/preview", async (req, res, next) => {
   }
 });
 
-ordersRouter.post("/", async (req, res, next) => {
+ordersRouter.post("/", requireAuth, async (req, res, next) => {
   try {
-    const body = req.body as OrderBody & { userId?: unknown };
-    const { userId } = body;
-    if (!userId || !mongoose.isValidObjectId(String(userId))) {
-      return res.status(400).json({ error: "valid userId is required" });
-    }
-    const user = await User.findById(userId);
+    const body = req.body as OrderBody;
+    const userId = req.auth!.userId;
+    const user = await User.findOne({
+      _id: userId,
+      organizationId: req.auth!.organizationId,
+    });
     if (!user) return res.status(400).json({ error: "User not found" });
 
     let payload: ReturnType<typeof orderPayloadFromBody>;
@@ -214,13 +222,19 @@ ordersRouter.post("/", async (req, res, next) => {
   }
 });
 
-ordersRouter.put("/:userId", async (req, res, next) => {
+ordersRouter.put("/:userId", requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.params;
     if (!mongoose.isValidObjectId(String(userId))) {
       return res.status(400).json({ error: "invalid userId" });
     }
-    const user = await User.findById(userId);
+    if (userId !== req.auth!.userId) {
+      return res.status(403).json({ error: "You can only update your own orders" });
+    }
+    const user = await User.findOne({
+      _id: userId,
+      organizationId: req.auth!.organizationId,
+    });
     if (!user) return res.status(400).json({ error: "User not found" });
 
     let payload: ReturnType<typeof orderPayloadFromBody>;
@@ -257,11 +271,14 @@ ordersRouter.put("/:userId", async (req, res, next) => {
   }
 });
 
-ordersRouter.delete("/:userId", async (req, res, next) => {
+ordersRouter.delete("/:userId", requireAuth, async (req, res, next) => {
   try {
     const { userId } = req.params;
     if (!mongoose.isValidObjectId(String(userId))) {
       return res.status(400).json({ error: "invalid userId" });
+    }
+    if (userId !== req.auth!.userId) {
+      return res.status(403).json({ error: "You can only delete your own orders" });
     }
     let dateKey: string;
     try {
@@ -291,10 +308,10 @@ ordersRouter.delete("/:userId", async (req, res, next) => {
 type HistoryFilter = FilterQuery<{
   dateKey: string;
   deletedAt: null;
-  userId?: string;
+  userId?: string | { $in: string[] };
 }>;
 
-ordersRouter.get("/", async (req, res, next) => {
+ordersRouter.get("/", requireAuth, async (req, res, next) => {
   try {
     const today = todayDateKey();
     const q = req.query as Record<string, unknown>;
@@ -316,12 +333,19 @@ ordersRouter.get("/", async (req, res, next) => {
       dateKey: { $gte: from, $lte: to },
       deletedAt: null,
     };
+    const orgId = req.auth!.organizationId;
+    const allowed = await organizationUserIds(orgId);
     if (q.userId != null && String(q.userId).trim() !== "") {
       const uid = String(q.userId);
       if (!mongoose.isValidObjectId(uid)) {
         return res.status(400).json({ error: "invalid userId" });
       }
+      if (!allowed.includes(uid)) {
+        return res.status(403).json({ error: "user not in your organization" });
+      }
       filter.userId = uid;
+    } else {
+      filter.userId = { $in: allowed };
     }
     const docs = await Order.find(filter)
       .sort({ dateKey: -1, createdAt: -1 })
@@ -376,11 +400,16 @@ ordersRouter.get("/", async (req, res, next) => {
   }
 });
 
-ordersRouter.get("/:userId", async (req, res, next) => {
+ordersRouter.get("/:userId", requireAuth, async (req, res, next) => {
   try {
-    const { userId } = req.params;
-    if (!mongoose.isValidObjectId(String(userId))) {
+    const raw = req.params.userId;
+    const userId = String(Array.isArray(raw) ? raw[0] : raw);
+    if (!mongoose.isValidObjectId(userId)) {
       return res.status(400).json({ error: "invalid userId" });
+    }
+    const allowed = await organizationUserIds(req.auth!.organizationId);
+    if (!allowed.includes(userId)) {
+      return res.status(403).json({ error: "user not in your organization" });
     }
     let dateKey: string;
     try {
