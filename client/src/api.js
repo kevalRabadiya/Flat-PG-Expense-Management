@@ -161,4 +161,13 @@ export function getServerHealth() {
   return request("/health");
 }
 
+/** Background keep-alive; does not call markServerDown on failure. */
+export async function pingHealthSilently() {
+  try {
+    await fetch(`${API_BASE}/health`, { method: "GET" });
+  } catch {
+    /* ignore */
+  }
+}
+
 export { API_DOWN_EVENT, API_RECOVERED_EVENT, SERVER_DOWN_PATH };

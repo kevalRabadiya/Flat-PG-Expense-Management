@@ -20,6 +20,7 @@ import {
   API_DOWN_EVENT,
   SERVER_DOWN_PATH,
   isServerMarkedDown,
+  pingHealthSilently,
 } from "./api.js";
 import { useTheme } from "./theme/useTheme.js";
 import "./App.css";
@@ -185,6 +186,14 @@ export default function App() {
     window.addEventListener(API_DOWN_EVENT, goServerDown);
     return () => window.removeEventListener(API_DOWN_EVENT, goServerDown);
   }, [location.pathname, navigate]);
+
+  useEffect(() => {
+    void pingHealthSilently();
+    const id = setInterval(() => {
+      void pingHealthSilently();
+    }, 600_000);
+    return () => clearInterval(id);
+  }, []);
 
   if (location.pathname === SERVER_DOWN_PATH) {
     return (
