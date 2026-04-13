@@ -1,5 +1,17 @@
-import type { RequestHandler } from "express";
+import type { Request, RequestHandler } from "express";
 import jwt from "jsonwebtoken";
+
+/** Case-insensitive Bearer; optional X-Auth-Token for proxies that mishandle Authorization on some requests. */
+export function extractAccessToken(req: Request): string {
+  const raw = req.headers.authorization;
+  if (typeof raw === "string") {
+    const m = raw.match(/^\s*Bearer\s+(\S+)/i);
+    if (m?.[1]) return m[1].trim();
+  }
+  const alt = req.headers["x-auth-token"];
+  if (typeof alt === "string" && alt.trim()) return alt.trim();
+  return "";
+}
 
 export type AuthPayload = {
   userId: string;
@@ -46,11 +58,7 @@ export function verifyAuthToken(token: string): AuthPayload {
 }
 
 export const requireAuth: RequestHandler = (req, res, next) => {
-  const raw = req.headers.authorization;
-  const token =
-    typeof raw === "string" && raw.startsWith("Bearer ")
-      ? raw.slice(7).trim()
-      : "";
+  const token = extractAccessToken(req);
   if (!token) {
     res.status(401).json({ error: "Unauthorized" });
     return;

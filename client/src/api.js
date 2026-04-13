@@ -117,7 +117,10 @@ function authHeaderForPath(path) {
     p === "/api/auth/register-member" ||
     p === "/api/auth/login";
   if (noBearer) return {};
-  return { Authorization: `Bearer ${token}` };
+  return {
+    Authorization: `Bearer ${token}`,
+    "X-Auth-Token": token,
+  };
 }
 
 /** Drop any caller-supplied Authorization so it cannot override or clear our Bearer. */
@@ -128,9 +131,9 @@ function withoutAuthorizationHeader(headers) {
       ? Object.fromEntries(headers.entries())
       : { ...headers };
   for (const key of Object.keys(out)) {
-    if (key.toLowerCase() === "authorization") {
+    const k = key.toLowerCase();
+    if (k === "authorization" || k === "x-auth-token") {
       delete out[key];
-      break;
     }
   }
   return out;

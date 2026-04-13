@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getLightBillsForYear, getUsers, saveLightBillPeriod } from "../api";
+import {
+  getLightBillsForYear,
+  getStoredToken,
+  getUsers,
+  saveLightBillPeriod,
+} from "../api";
+import { useAuth } from "../auth/useAuth.js";
 import Loader from "../components/Loader.jsx";
 
 function defaultFromToMonth() {
@@ -43,6 +49,7 @@ function mergeBillRows(rowsA, rowsB) {
 }
 
 export default function LightBillPage() {
+  const { user } = useAuth();
   const [fromMonthKey, setFromMonthKey] = useState(
     () => defaultFromToMonth().fromMonthKey
   );
@@ -58,6 +65,13 @@ export default function LightBillPage() {
   const [userCount, setUserCount] = useState(0);
 
   useEffect(() => {
+    if (!getStoredToken()) {
+      setLoading(false);
+      setMergedRows([]);
+      setAmount("");
+      setError(null);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -98,9 +112,13 @@ export default function LightBillPage() {
     return () => {
       cancelled = true;
     };
-  }, [fromMonthKey, toMonthKey]);
+  }, [user?._id, fromMonthKey, toMonthKey]);
 
   useEffect(() => {
+    if (!getStoredToken()) {
+      setUserCount(0);
+      return;
+    }
     let cancelled = false;
     getUsers()
       .then((list) => {
@@ -114,7 +132,7 @@ export default function LightBillPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?._id]);
 
   const recentRows = [...mergedRows]
     .sort((a, b) => {

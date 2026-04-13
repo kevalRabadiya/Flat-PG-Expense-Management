@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { getHousekeeperAttendance, setHousekeeperAttendance } from "../api";
+import {
+  getHousekeeperAttendance,
+  getStoredToken,
+  setHousekeeperAttendance,
+} from "../api";
+import { useAuth } from "../auth/useAuth.js";
 import Loader from "../components/Loader.jsx";
 import { formatDateDDMMYYYY } from "../utils/dateFormat.js";
 
@@ -54,6 +59,7 @@ function buildCalendarCells(ym) {
 const RATE_PER_DAY = Number(import.meta.env.VITE_HOUSEKEEPER_RATE_PER_DAY) || 0;
 
 export default function HousekeeperPage() {
+  const { user } = useAuth();
   const [month, setMonth] = useState(() => monthValueFromDate(new Date()));
   const [presentDateKeys, setPresentDateKeys] = useState(() => new Set());
   const [savingDateKey, setSavingDateKey] = useState("");
@@ -65,6 +71,12 @@ export default function HousekeeperPage() {
   const cells = useMemo(() => buildCalendarCells(month), [month]);
 
   useEffect(() => {
+    if (!getStoredToken()) {
+      setLoading(false);
+      setPresentDateKeys(new Set());
+      setError(null);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -86,7 +98,7 @@ export default function HousekeeperPage() {
     return () => {
       cancelled = true;
     };
-  }, [range.from, range.to]);
+  }, [user?._id, range.from, range.to]);
 
   const attendedDays = presentDateKeys.size;
   const totalAmount = attendedDays * RATE_PER_DAY;

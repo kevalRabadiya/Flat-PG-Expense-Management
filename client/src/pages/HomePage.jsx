@@ -486,7 +486,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [range.from, range.to]);
+  }, [user?._id, range.from, range.to]);
 
   useEffect(() => {
     if (!getStoredToken()) {
@@ -522,7 +522,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [currentYearFrom, today]);
+  }, [user?._id, currentYearFrom, today]);
 
   useEffect(() => {
     let cancelled = false;
@@ -583,7 +583,7 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, [today]);
+  }, [user?._id, today]);
 
   const monthLabelShort = `${chartMonth.slice(5, 7)}/${chartMonth.slice(0, 4)}`;
   const rangeDisplay = `${formatDateDDMMYYYY(range.from)} – ${formatDateDDMMYYYY(range.to)}`;
