@@ -161,6 +161,16 @@ export function getServerHealth() {
   return request("/health");
 }
 
+/**
+ * How often to ping /health while the SPA is open. Render’s free web tier
+ * typically spins down after ~15 minutes without traffic — stay under that
+ * when at least one browser tab has your app open.
+ *
+ * This does **not** keep the API warm when nobody has the site open; use a
+ * free uptime monitor (cron hitting GET /health) or a paid Render instance.
+ */
+export const HEALTH_KEEP_ALIVE_MS = 5 * 60 * 1000;
+
 /** Background keep-alive; does not call markServerDown on failure. */
 export async function pingHealthSilently() {
   try {
