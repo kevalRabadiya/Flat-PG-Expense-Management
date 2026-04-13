@@ -65,12 +65,11 @@ mongoose
   .connect(MONGODB_URI)
   .then(() => {
     app.listen(PORT, HOST, () => {
-      const where =
-        HOST === "0.0.0.0" || HOST === "::"
-          ? `http://localhost:${PORT} (all interfaces)`
-          : `http://${HOST}:${PORT}`;
-      console.log(`API listening on ${where}`);
-      console.log("Connected to MongoDB");
+      const isProd = process.env.NODE_ENV === "production";
+      const where = isProd
+        ? process.env.BACKEND_URL?.trim() || `bound ${HOST}:${PORT} (set BACKEND_URL to log your app URL)`
+        : `http://localhost:${PORT}`;
+      console.log(`API listening — ${where}`);
     });
   })
   .catch((err: unknown) => {

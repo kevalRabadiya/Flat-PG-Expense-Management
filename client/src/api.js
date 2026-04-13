@@ -7,6 +7,12 @@ function httpsForRenderHost(urlStr) {
 }
 
 function resolveApiBase() {
+  if (typeof window !== "undefined") {
+    const override = window.__TIFIN_API_BASE__;
+    if (typeof override === "string" && override.trim()) {
+      return httpsForRenderHost(override.trim().replace(/\/$/, ""));
+    }
+  }
   const raw = import.meta.env.VITE_API_URL?.trim() || "";
   // Allow relative API bases (e.g. "/api") for same-origin deployments.
   if (raw.startsWith("/")) return raw.replace(/\/$/, "");
@@ -45,16 +51,29 @@ function resolveApiBase() {
   return normalized;
 }
 
-const API_BASE = resolveApiBase();
+let _apiBaseMemo;
 
-if (
-  import.meta.env.PROD &&
-  typeof window !== "undefined" &&
-  API_BASE === ""
-) {
-  console.warn(
-    "[API] VITE_API_URL was not set at build time. Set VITE_API_URL=https://your-api.onrender.com in Vercel (Production) and redeploy. Network tab should show requests to Render with Authorization: Bearer …"
-  );
+/** Resolved API origin (env, optional `window.__TIFIN_API_BASE__`, or dev proxy). */
+function getApiBase() {
+  if (_apiBaseMemo !== undefined) return _apiBaseMemo;
+  _apiBaseMemo = resolveApiBase();
+  if (
+    import.meta.env.PROD &&
+    typeof window !== "undefined" &&
+    _apiBaseMemo === ""
+  ) {
+    console.warn(
+      "[API] VITE_API_URL was not set at build time. In Vercel → Settings → Environment Variables set VITE_API_URL=https://your-api.onrender.com (Production + Preview), redeploy, or set window.__TIFIN_API_BASE__ before the app loads. Network tab should show requests to Render with Authorization: Bearer …"
+    );
+  }
+  return _apiBaseMemo;
+}
+
+function responseLooksLikeHtml(text, contentType) {
+  const ct = contentType || "";
+  if (/text\/html/i.test(ct)) return true;
+  const t = String(text).trimStart();
+  return /^<(!DOCTYPE|html)/i.test(t);
 }
 
 const TOKEN_KEY = "tiffin_token";
@@ -148,20 +167,44 @@ export function clearServerDownMark() {
   dispatchWindowEvent(API_RECOVERED_EVENT);
 }
 
-async function handleJson(res) {
+async function handleJson(res, requestPath = "") {
   if (res.status === 204) {
     if (!res.ok) throw new Error(res.statusText || "Request failed");
     return null;
   }
   const text = await res.text();
+  const ct = res.headers.get("content-type") || "";
+  if (responseLooksLikeHtml(text, ct)) {
+    const missingEnv =
+      import.meta.env.PROD && getApiBase() === ""
+        ? " VITE_API_URL was not set at Vercel build time — add it under Environment Variables and redeploy."
+        : " Set VITE_API_URL to your Render API origin (https://….onrender.com), redeploy, or set window.__TIFIN_API_BASE__ in index.html before the app script.";
+    throw new Error(
+      `API returned HTML instead of JSON for ${requestPath || "request"}.${missingEnv}`
+    );
+  }
   let data;
   try {
     data = text ? JSON.parse(text) : {};
   } catch {
+    if (res.ok) {
+      throw new Error(
+        `Invalid JSON in successful response for ${requestPath || "request"}`
+      );
+    }
     data = { error: text || "Invalid response" };
   }
   if (!res.ok) {
-    const msg = data.error || res.statusText || "Request failed";
+    let msg = data.error || res.statusText || "Request failed";
+    if (res.status === 401) {
+      if (msg === "Unauthorized") {
+        msg =
+          "Unauthorized: not signed in on this site, or the token was not sent. Log in again on this exact URL (localStorage is per-origin).";
+      } else if (msg === "Invalid token") {
+        msg =
+          "Invalid token: session no longer valid (e.g. JWT_SECRET changed on the server). Log in again.";
+      }
+    }
     throw new Error(msg);
   }
   return data;
@@ -174,14 +217,15 @@ async function request(path, options = {}) {
   };
   const fetchOptions = { ...options, headers: mergedHeaders };
   try {
-    const res = await fetch(`${API_BASE}${path}`, fetchOptions);
-    return await handleJson(res);
+    const base = getApiBase();
+    const res = await fetch(`${base}${path}`, fetchOptions);
+    return await handleJson(res, path);
   } catch (err) {
     if (err instanceof TypeError) {
       const host =
         typeof window !== "undefined" ? window.location.origin : "unknown origin";
       throw new Error(
-        `Network error calling ${API_BASE}${path} from ${host}. Check API URL/CORS and that backend is reachable.`
+        `Network error calling ${getApiBase()}${path} from ${host}. Check API URL/CORS and that backend is reachable.`
       );
     }
     throw err;
@@ -330,7 +374,13 @@ export function getServerHealth() {
 /** Background keep-alive; owns server-down signaling. */
 export async function pingHealthSilently() {
   try {
-    const res = await fetch(`${API_BASE}/health`, { method: "GET" });
+    const res = await fetch(`${getApiBase()}/health`, { method: "GET" });
+    const text = await res.text();
+    const ct = res.headers.get("content-type") || "";
+    if (responseLooksLikeHtml(text, ct)) {
+      markServerDown();
+      return;
+    }
     if (res.ok) {
       clearServerDownMark();
       return;
