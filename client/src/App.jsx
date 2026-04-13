@@ -18,6 +18,7 @@ import LightBillPage from "./pages/LightBillPage.jsx";
 import ServerDownPage from "./pages/ServerDownPage.jsx";
 import {
   API_DOWN_EVENT,
+  HEALTH_KEEP_ALIVE_MS,
   SERVER_DOWN_PATH,
   isServerMarkedDown,
   pingHealthSilently,
@@ -191,8 +192,17 @@ export default function App() {
     void pingHealthSilently();
     const id = setInterval(() => {
       void pingHealthSilently();
-    }, 600_000);
-    return () => clearInterval(id);
+    }, HEALTH_KEEP_ALIVE_MS);
+    function pingIfVisible() {
+      if (document.visibilityState === "visible") {
+        void pingHealthSilently();
+      }
+    }
+    document.addEventListener("visibilitychange", pingIfVisible);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", pingIfVisible);
+    };
   }, []);
 
   if (location.pathname === SERVER_DOWN_PATH) {
