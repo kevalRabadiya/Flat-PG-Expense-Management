@@ -1338,6 +1338,10 @@
   gap: 0.5rem;
 }
 
+.history-summary-thali-includes strong {
+  color: var(--text-h);
+}
+
 .history-summary-optimize-list {
   margin: 0;
   padding-left: 1.15rem;
@@ -1413,15 +1417,16 @@
 
 @media (max-width: 520px) {
   .history-summary-dl {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(6rem, 44%) minmax(0, 1fr);
+    gap: 0.4rem 0.7rem;
   }
 
   .history-summary-dl dt {
-    margin-top: 0.35rem;
+    margin-top: 0;
   }
 
-  .history-summary-dl dt:first-child {
-    margin-top: 0;
+  .history-summary-dl dd {
+    text-align: right;
   }
 }
 

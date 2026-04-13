@@ -14,6 +14,7 @@ import {
   formatOptimizedThaliLine,
   optimizeExtrasForRange,
 } from "../utils/optimizeExtrasBundles.js";
+import { THALI_BUNDLES } from "../data/thaliBundles.js";
 
 function todayISO() {
   const d = new Date();
@@ -83,6 +84,29 @@ export default function HistoryPage() {
     () => optimizeExtrasForRange(summary, { includeOrderedThalis: true }),
     [summary]
   );
+  const thaliBundleById = useMemo(
+    () => new Map(THALI_BUNDLES.map((bundle) => [bundle.id, bundle])),
+    []
+  );
+  const optimizedThaliIncludes = useMemo(() => {
+    let roti = 0;
+    let sabji = 0;
+    let dalRice = 0;
+    for (const [id, qtyRaw] of optimize.thaliCounts || []) {
+      const qty = Number(qtyRaw) || 0;
+      if (qty <= 0) continue;
+      const bundle = thaliBundleById.get(id);
+      if (!bundle) continue;
+      roti += bundle.roti * qty;
+      sabji += bundle.sabji * qty;
+      dalRice += bundle.dalRice * qty;
+    }
+    return [
+      { key: "roti", label: "Roti", value: roti },
+      { key: "sabji", label: "Sabji", value: sabji },
+      { key: "dal-rice", label: "Dal-rice", value: dalRice },
+    ].filter((item) => item.value > 0);
+  }, [optimize.thaliCounts, thaliBundleById]);
 
   const hasThaliTotals = summary.thaliCounts.size > 0;
   const hasDalType =
@@ -406,6 +430,19 @@ export default function HistoryPage() {
                         <strong>Thalis:</strong>{" "}
                         {formatOptimizedThaliLine(optimize.thaliCounts)}
                       </p>
+                      {optimizedThaliIncludes.length > 0 ? (
+                        <p className="small muted history-summary-thali-includes mb-0">
+                          Includes:{" "}
+                          {optimizedThaliIncludes.map((item, index) => (
+                            <span key={item.key}>
+                              <strong>{item.label}</strong> x {item.value}
+                              {index < optimizedThaliIncludes.length - 1
+                                ? ", "
+                                : ""}
+                            </span>
+                          ))}
+                        </p>
+                      ) : null}
                       {optimize.thaliOnlyCost > 0 ? (
                         <p className="small muted mb-0">
                           Thali bundles subtotal: ₹{optimize.thaliOnlyCost}
