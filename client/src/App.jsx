@@ -18,10 +18,8 @@ import LightBillPage from "./pages/LightBillPage.jsx";
 import ServerDownPage from "./pages/ServerDownPage.jsx";
 import {
   API_DOWN_EVENT,
-  HEALTH_KEEP_ALIVE_MS,
   SERVER_DOWN_PATH,
   isServerMarkedDown,
-  pingHealthSilently,
 } from "./api.js";
 import { useTheme } from "./theme/useTheme.js";
 import "./App.css";
@@ -187,23 +185,6 @@ export default function App() {
     window.addEventListener(API_DOWN_EVENT, goServerDown);
     return () => window.removeEventListener(API_DOWN_EVENT, goServerDown);
   }, [location.pathname, navigate]);
-
-  useEffect(() => {
-    void pingHealthSilently();
-    const id = setInterval(() => {
-      void pingHealthSilently();
-    }, HEALTH_KEEP_ALIVE_MS);
-    function pingIfVisible() {
-      if (document.visibilityState === "visible") {
-        void pingHealthSilently();
-      }
-    }
-    document.addEventListener("visibilitychange", pingIfVisible);
-    return () => {
-      clearInterval(id);
-      document.removeEventListener("visibilitychange", pingIfVisible);
-    };
-  }, []);
 
   if (location.pathname === SERVER_DOWN_PATH) {
     return (
