@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getLightBillsForYear, getUsers, saveLightBillPeriod } from "../api";
 import Loader from "../components/Loader.jsx";
+import { toast } from "../lib/toast.js";
 
 function defaultFromToMonth() {
   const d = new Date();
@@ -53,7 +54,6 @@ export default function LightBillPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [saveOk, setSaveOk] = useState(false);
   const [mergedRows, setMergedRows] = useState([]);
   const [userCount, setUserCount] = useState(0);
 
@@ -61,7 +61,6 @@ export default function LightBillPage() {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    setSaveOk(false);
 
     const y1 = Number(fromMonthKey.slice(0, 4));
     const y2 = Number(toMonthKey.slice(0, 4));
@@ -127,7 +126,6 @@ export default function LightBillPage() {
   async function onSubmit(e) {
     e.preventDefault();
     setError(null);
-    setSaveOk(false);
     if (fromMonthKey > toMonthKey) {
       setError("From month must be on or before to month.");
       return;
@@ -144,10 +142,11 @@ export default function LightBillPage() {
     setSaving(true);
     try {
       await saveLightBillPeriod({ fromMonthKey, toMonthKey, amount: n });
-      setSaveOk(true);
-      window.setTimeout(() => setSaveOk(false), 2500);
+      toast.success("Light bill saved.");
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || "Could not save light bill.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -214,11 +213,6 @@ export default function LightBillPage() {
               <div className="banner banner--error" role="alert">
                 {error}
               </div>
-            ) : null}
-            {saveOk ? (
-              <p className="small muted mb-0" role="status">
-                Saved.
-              </p>
             ) : null}
             <div className="form-actions">
               <button type="submit" className="btn primary" disabled={saving}>
