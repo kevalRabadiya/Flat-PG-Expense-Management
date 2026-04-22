@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getHousekeeperAttendance, setHousekeeperAttendance } from "../api";
 import Loader from "../components/Loader.jsx";
+import { toast } from "../lib/toast.js";
 import { formatDateDDMMYYYY } from "../utils/dateFormat.js";
 
 function monthValueFromDate(d) {
@@ -105,9 +106,14 @@ export default function HousekeeperPage() {
 
     try {
       await setHousekeeperAttendance(dateKey, nextPresent);
+      toast.success(nextPresent ? "Marked present." : "Marked absent.", {
+        id: "housekeeper-save",
+      });
     } catch (e) {
       setPresentDateKeys(presentDateKeys);
-      setError(e.message || "Failed to save attendance.");
+      const msg = e.message || "Failed to save attendance.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSavingDateKey("");
     }
