@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { login, setAuthToken, setStoredAuthUser } from "../api";
+import { toast } from "../lib/toast.js";
 
 function EyeOpenIcon() {
   return (
@@ -73,9 +74,12 @@ export default function LoginPage({ isAuthenticated, onAuthChange }) {
       setAuthToken(data.token);
       setStoredAuthUser(data.user);
       onAuthChange(data.user);
+      toast.success("Signed in.");
       navigate(nextPath, { replace: true });
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || "Login failed.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

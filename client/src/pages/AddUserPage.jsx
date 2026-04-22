@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { createUser } from "../api";
+import { toast } from "../lib/toast.js";
 
 export default function AddUserPage() {
   const navigate = useNavigate();
@@ -36,9 +37,12 @@ export default function AddUserPage() {
         username: username.trim().toLowerCase(),
         password,
       });
+      toast.success("User added.");
       navigate("/users");
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || "Could not add user.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

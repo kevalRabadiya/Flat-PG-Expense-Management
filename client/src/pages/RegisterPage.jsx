@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { register, setAuthToken, setStoredAuthUser } from "../api";
+import { toast } from "../lib/toast.js";
 
 function EyeOpenIcon() {
   return (
@@ -92,9 +93,12 @@ export default function RegisterPage({ isAuthenticated, onAuthChange }) {
       setAuthToken(data.token);
       setStoredAuthUser(data.user);
       onAuthChange(data.user);
+      toast.success("Account created.");
       navigate("/", { replace: true });
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || "Registration failed.";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }

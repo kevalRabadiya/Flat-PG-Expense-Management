@@ -3249,3 +3249,12 @@
     grid-column: auto;
   }
 }
+
+/* Sonner toasts: sit above app chrome (nav ~ z-index 60) */
+[data-sonner-toaster] {
+  z-index: 100;
+}
+
+.app-toast {
+  font-family: var(--font-body, inherit);
+}

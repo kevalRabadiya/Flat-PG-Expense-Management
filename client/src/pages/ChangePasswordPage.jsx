@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { changePassword } from "../api";
+import { toast } from "../lib/toast.js";
 
 function EyeOpenIcon() {
   return (
@@ -49,7 +50,6 @@ export default function ChangePasswordPage() {
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -72,7 +72,6 @@ export default function ChangePasswordPage() {
   async function onSubmit(e) {
     e.preventDefault();
     setError(null);
-    setSuccess(null);
 
     if (isNewPasswordShort) {
       setError("New password must be at least 4 characters.");
@@ -93,9 +92,11 @@ export default function ChangePasswordPage() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmNewPassword("");
-      setSuccess("Password changed successfully.");
+      toast.success("Password changed successfully.");
     } catch (err) {
-      setError(err.message || "Failed to change password");
+      const msg = err.message || "Failed to change password";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
@@ -203,12 +204,6 @@ export default function ChangePasswordPage() {
               {error}
             </div>
           ) : null}
-          {success ? (
-            <div className="banner banner--success" role="status">
-              {success}
-            </div>
-          ) : null}
-
           <button type="submit" className="btn primary auth-submit-btn" disabled={!canSubmit}>
             {saving ? "Updating..." : "Update password"}
           </button>

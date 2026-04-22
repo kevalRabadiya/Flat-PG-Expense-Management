@@ -8,6 +8,7 @@ import {
   previewOrder,
   updateOrder,
 } from "../api";
+import { toast } from "../lib/toast.js";
 import { formatDateDDMMYYYY } from "../utils/dateFormat.js";
 
 function newRowId() {
@@ -78,9 +79,7 @@ export default function OrderPage({ authUser }) {
   }, [paramDate]);
 
   const [previewTotal, setPreviewTotal] = useState(null);
-  const [savedMessage, setSavedMessage] = useState(null);
   const [loadError, setLoadError] = useState(null);
-  const [actionError, setActionError] = useState(null);
   const [loadingOrder, setLoadingOrder] = useState(false);
   const [busy, setBusy] = useState(false);
   const [hasSavedOrder, setHasSavedOrder] = useState(false);
@@ -187,15 +186,13 @@ export default function OrderPage({ authUser }) {
       return;
     }
     let cancelled = false;
-    setActionError(null);
-    setSavedMessage(null);
     setLoadingOrder(true);
     (async () => {
       try {
         const order = await getOrderForUser(currentUserId, orderDate);
         if (cancelled) return;
         applyOrderToForm(order);
-        setSavedMessage("Loaded saved order for this date.");
+        toast.success("Loaded saved order for this date.", { id: "order-load" });
       } catch (e) {
         if (cancelled) return;
         if (e.message === "Order not found") {
@@ -210,7 +207,7 @@ export default function OrderPage({ authUser }) {
           setHasSavedOrder(false);
           return;
         }
-        setActionError(e.message);
+        toast.error(e.message || "Failed to load order.");
       } finally {
         if (!cancelled) setLoadingOrder(false);
       }
@@ -239,8 +236,6 @@ export default function OrderPage({ authUser }) {
 
   async function onCalculate(e) {
     e.preventDefault();
-    setActionError(null);
-    setSavedMessage(null);
     setBusy(true);
     const g = ++previewGenRef.current;
     try {
@@ -250,7 +245,7 @@ export default function OrderPage({ authUser }) {
       }
     } catch (err) {
       if (g === previewGenRef.current) {
-        setActionError(err.message);
+        toast.error(err.message || "Could not calculate total.");
       }
     } finally {
       setBusy(false);
@@ -260,11 +255,9 @@ export default function OrderPage({ authUser }) {
   async function onSave(e) {
     e.preventDefault();
     if (!currentUserId) {
-      setActionError("Missing logged-in user.");
+      toast.error("Missing logged-in user.");
       return;
     }
-    setActionError(null);
-    setSavedMessage(null);
     setBusy(true);
     try {
       const { totalAmount, order } = await createOrder({
@@ -275,9 +268,9 @@ export default function OrderPage({ authUser }) {
       setPreviewTotal(totalAmount);
       if (order) applyOrderToForm(order);
       else setHasSavedOrder(true);
-      setSavedMessage("Order saved for this date.");
+      toast.success("Order saved for this date.");
     } catch (err) {
-      setActionError(err.message);
+      toast.error(err.message || "Could not save order.");
     } finally {
       setBusy(false);
     }
@@ -285,11 +278,9 @@ export default function OrderPage({ authUser }) {
 
   async function onUpdate() {
     if (!currentUserId) {
-      setActionError("Missing logged-in user.");
+      toast.error("Missing logged-in user.");
       return;
     }
-    setActionError(null);
-    setSavedMessage(null);
     setBusy(true);
     try {
       const { totalAmount, order } = await updateOrder(currentUserId, {
@@ -299,9 +290,9 @@ export default function OrderPage({ authUser }) {
       setPreviewTotal(totalAmount);
       if (order) applyOrderToForm(order);
       else setHasSavedOrder(true);
-      setSavedMessage("Order updated.");
+      toast.success("Order updated.");
     } catch (err) {
-      setActionError(err.message);
+      toast.error(err.message || "Could not update order.");
     } finally {
       setBusy(false);
     }
@@ -316,8 +307,6 @@ export default function OrderPage({ authUser }) {
     ) {
       return;
     }
-    setActionError(null);
-    setSavedMessage(null);
     setBusy(true);
     try {
       await deleteOrder(currentUserId, orderDate);
@@ -330,9 +319,9 @@ export default function OrderPage({ authUser }) {
       setDescription("");
       setPreviewTotal(null);
       setHasSavedOrder(false);
-      setSavedMessage("Order deleted.");
+      toast.success("Order deleted.");
     } catch (err) {
-      setActionError(err.message);
+      toast.error(err.message || "Could not delete order.");
     } finally {
       setBusy(false);
     }
@@ -536,15 +525,6 @@ export default function OrderPage({ authUser }) {
             </span>
           </label>
         </section>
-
-        {(actionError || savedMessage) && (
-          <div
-            className={`banner ${actionError ? "banner--error" : "banner--success"}`}
-            role="status"
-          >
-            {actionError || savedMessage}
-          </div>
-        )}
 
         <div className="total-block order-total-block glass-surface" aria-live="polite">
           {previewTotal != null ? (
