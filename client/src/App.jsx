@@ -467,7 +467,7 @@ export default function App() {
           path="/"
           element={
             <RequireAuth isAuthenticated={isAuthenticated}>
-              <HomePage />
+              <HomePage authUser={authUser} />
             </RequireAuth>
           }
         />
