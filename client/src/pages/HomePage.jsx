@@ -4,6 +4,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -1076,7 +1078,7 @@ export default function HomePage() {
               <p className="muted mb-0 home-chart-empty">No data.</p>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart
+                <LineChart
                   data={lightBillPeriodChartData}
                   margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
                 >
@@ -1115,13 +1117,15 @@ export default function HomePage() {
                       return `${p.periodLabel} (${p.rangeLabel})`;
                     }}
                   />
-                  <Bar
+                  <Line
                     dataKey="amount"
-                    fill={chartColors.accent}
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={36}
+                    type="monotone"
+                    stroke={chartColors.accent}
+                    strokeWidth={3}
+                    dot={{ r: 3, strokeWidth: 2, fill: chartColors.accent }}
+                    activeDot={{ r: 5 }}
                   />
-                </BarChart>
+                </LineChart>
               </ResponsiveContainer>
             )}
             <p className="small muted mb-0 mt-2">
@@ -1149,7 +1153,7 @@ export default function HomePage() {
               <p className="muted mb-0 home-chart-empty">No data.</p>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart
+                <LineChart
                   data={waterBillMonthChartData}
                   margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
                 >
@@ -1180,13 +1184,15 @@ export default function HomePage() {
                     formatter={(value) => [`₹${value}`, "Water bill"]}
                     labelFormatter={(_, payload) => payload?.[0]?.payload?.monthKey || ""}
                   />
-                  <Bar
+                  <Line
                     dataKey="amount"
-                    fill={chartColors.accent}
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={36}
+                    type="monotone"
+                    stroke={chartColors.accent}
+                    strokeWidth={3}
+                    dot={{ r: 3, strokeWidth: 2, fill: chartColors.accent }}
+                    activeDot={{ r: 5 }}
                   />
-                </BarChart>
+                </LineChart>
               </ResponsiveContainer>
             )}
             <p className="small muted mb-0 mt-2">
