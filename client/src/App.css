@@ -1850,11 +1850,25 @@
   margin-top: 1rem;
 }
 
+.water-bill-history {
+  margin-top: 1rem;
+}
+
 .lightbill-page {
   position: relative;
 }
 
+.waterbill-page {
+  position: relative;
+}
+
 .lightbill-form {
+  max-width: min(100%, 48rem);
+  border-color: var(--glass-border);
+  background: color-mix(in srgb, var(--glass-bg) 80%, transparent);
+}
+
+.waterbill-form {
   max-width: min(100%, 48rem);
   border-color: var(--glass-border);
   background: color-mix(in srgb, var(--glass-bg) 80%, transparent);
@@ -1872,12 +1886,33 @@
     transform var(--motion-fast) var(--motion-ease);
 }
 
+.waterbill-form input[type="month"],
+.waterbill-form input[type="number"] {
+  transition:
+    border-color var(--motion-fast) var(--motion-ease),
+    box-shadow var(--motion-base) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+
 .lightbill-form input[type="month"]:focus-visible,
 .lightbill-form input[type="number"]:focus-visible {
   transform: translateY(-1px);
 }
 
+.waterbill-form input[type="month"]:focus-visible,
+.waterbill-form input[type="number"]:focus-visible {
+  transform: translateY(-1px);
+}
+
 .light-bill-history-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.water-bill-history-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -1892,7 +1927,23 @@
   background: color-mix(in srgb, var(--glass-bg) 80%, transparent);
 }
 
+.waterbill-page .water-bill-history {
+  max-width: min(100%, 56rem);
+  margin-inline: auto;
+  border-color: var(--glass-border);
+  background: color-mix(in srgb, var(--glass-bg) 80%, transparent);
+}
+
 .light-bill-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.water-bill-history-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -1913,7 +1964,24 @@
     transform var(--motion-fast) var(--motion-ease);
 }
 
+.water-bill-history-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--glass-border);
+  transition:
+    background var(--motion-base) var(--motion-ease),
+    transform var(--motion-fast) var(--motion-ease);
+}
+
 .light-bill-history-item:hover {
+  background: color-mix(in srgb, var(--accent-muted) 40%, transparent);
+  transform: translateY(-1px);
+}
+
+.water-bill-history-item:hover {
   background: color-mix(in srgb, var(--accent-muted) 40%, transparent);
   transform: translateY(-1px);
 }
@@ -1922,7 +1990,17 @@
   border-bottom: none;
 }
 
+.water-bill-history-item:last-child {
+  border-bottom: none;
+}
+
 .light-bill-history-period {
+  color: var(--text-h);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.water-bill-history-period {
   color: var(--text-h);
   font-weight: 500;
   line-height: 1.35;
@@ -1936,6 +2014,13 @@
 }
 
 .light-bill-history-amount {
+  color: var(--text-h);
+  font-weight: 700;
+  white-space: nowrap;
+  text-shadow: 0 1px 12px color-mix(in srgb, var(--accent) 15%, transparent);
+}
+
+.water-bill-history-amount {
   color: var(--text-h);
   font-weight: 700;
   white-space: nowrap;
@@ -3578,9 +3663,14 @@
   align-items: center;
 }
 
-.deposit-form {
+.deposit-page {
   display: grid;
   gap: 14px;
+}
+
+.deposit-form {
+  display: grid;
+  gap: 16px;
 }
 
 .deposit-summary-grid {
@@ -3601,6 +3691,7 @@
 .deposit-split-wrap {
   display: grid;
   gap: 12px;
+  margin-top: 2px;
 }
 
 .deposit-split-head {
@@ -3662,6 +3753,7 @@
   display: grid;
   gap: 16px;
   grid-template-columns: 1.1fr 1fr;
+  margin-top: 2px;
 }
 
 .deposit-pending-card,
@@ -3701,6 +3793,7 @@
 .deposit-history-card {
   display: grid;
   gap: 12px;
+  margin-top: 2px;
 }
 
 .deposit-history-head {

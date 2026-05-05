@@ -17,6 +17,7 @@ import InvoicePage from "./pages/InvoicePage.jsx";
 import HousekeeperPage from "./pages/HousekeeperPage.jsx";
 import LightBillPage from "./pages/LightBillPage.jsx";
 import DepositPage from "./pages/DepositPage.jsx";
+import WaterBillPage from "./pages/WaterBillPage.jsx";
 import ServerDownPage from "./pages/ServerDownPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
@@ -124,7 +125,8 @@ function UtilitiesMenu() {
   const utilitiesActive =
     location.pathname.startsWith("/housekeeper") ||
     location.pathname.startsWith("/light-bill") ||
-    location.pathname.startsWith("/deposit");
+    location.pathname.startsWith("/deposit") ||
+    location.pathname.startsWith("/water-bill");
 
   useEffect(() => {
     function onDocClick(e) {
@@ -188,6 +190,16 @@ function UtilitiesMenu() {
             }}
           >
             Deposit
+          </NavLink>
+          <NavLink
+            to="/water-bill"
+            className="nav-dropdown-item"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+            }}
+          >
+            Water bill
           </NavLink>
         </div>
       ) : null}
@@ -512,6 +524,14 @@ export default function App() {
           element={
             <RequireAuth isAuthenticated={isAuthenticated}>
               <DepositPage />
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/water-bill"
+          element={
+            <RequireAuth isAuthenticated={isAuthenticated}>
+              <WaterBillPage />
             </RequireAuth>
           }
         />

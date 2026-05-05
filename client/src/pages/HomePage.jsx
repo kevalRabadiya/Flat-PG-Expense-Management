@@ -15,6 +15,7 @@ import {
   getDeposit,
   getHousekeeperAttendance,
   getLightBillsForYear,
+  getWaterBillsForYear,
   getOrdersHistory,
   getUsers,
 } from "../api";
@@ -269,6 +270,7 @@ export default function HomePage() {
   const [housekeeperRows, setHousekeeperRows] = useState([]);
   const [housekeeperYearRows, setHousekeeperYearRows] = useState([]);
   const [lightBillYearRows, setLightBillYearRows] = useState([]);
+  const [waterBillYearRows, setWaterBillYearRows] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
   const [usersError, setUsersError] = useState(null);
@@ -282,6 +284,8 @@ export default function HomePage() {
   const [recentError, setRecentError] = useState(null);
   const [lightLoading, setLightLoading] = useState(true);
   const [lightError, setLightError] = useState(null);
+  const [waterLoading, setWaterLoading] = useState(true);
+  const [waterError, setWaterError] = useState(null);
   const [depositTotalAmount, setDepositTotalAmount] = useState(0);
   const [depositLoading, setDepositLoading] = useState(true);
   const [depositError, setDepositError] = useState(null);
@@ -407,6 +411,29 @@ export default function HomePage() {
     out.sort((a, b) => a.periodKey.localeCompare(b.periodKey));
     return out;
   }, [lightBillYearRows, selectedYear]);
+
+  const waterBillMonthChartData = useMemo(() => {
+    const year = Number(selectedYear);
+    const monthNow = year >= currentYear ? Number(today.slice(5, 7)) : 12;
+    const amountByMonth = new Map();
+    for (const row of waterBillYearRows) {
+      const mk = row?.monthKey;
+      if (typeof mk !== "string") continue;
+      const amt = Number(row?.amount);
+      if (!Number.isFinite(amt)) continue;
+      amountByMonth.set(mk, amt);
+    }
+    const out = [];
+    for (let m = 1; m <= monthNow; m += 1) {
+      const monthKey = `${year}-${String(m).padStart(2, "0")}`;
+      out.push({
+        monthKey,
+        monthLabel: new Date(year, m - 1, 1).toLocaleString("en-IN", { month: "short" }),
+        amount: amountByMonth.get(monthKey) || 0,
+      });
+    }
+    return out;
+  }, [currentYear, selectedYear, today, waterBillYearRows]);
 
   const topOptimizedUsers = useMemo(() => {
     const totals = new Map();
@@ -596,6 +623,32 @@ export default function HomePage() {
         }
       } finally {
         if (!cancelled) setLightLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedYear]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setWaterLoading(true);
+    setWaterError(null);
+    const year = Number(selectedYear);
+    (async () => {
+      try {
+        const rows = await getWaterBillsForYear(year);
+        if (!cancelled) {
+          setWaterBillYearRows(Array.isArray(rows) ? rows : []);
+          setWaterError(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setWaterBillYearRows([]);
+          setWaterError(e?.message || "Failed to load water bills");
+        }
+      } finally {
+        if (!cancelled) setWaterLoading(false);
       }
     })();
     return () => {
@@ -1073,6 +1126,71 @@ export default function HomePage() {
             )}
             <p className="small muted mb-0 mt-2">
               <Link to="/light-bill" className="home-section-link">
+                Enter or edit amounts →
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="home-charts-row">
+        <div className="card-elevated home-chart-card home-chart-card--span2 glass-surface glass-panel-3d depth-card premium-chart-card motion-lift motion-fade-up motion-delay-3">
+          <h2 className="form-section-title home-chart-title">
+            Water bill ({selectedYear})
+          </h2>
+          <div className="home-chart-inner">
+            {waterLoading ? (
+              <Loader variant="inline" label="Loading water bills…" />
+            ) : waterError ? (
+              <p className="muted mb-0 home-chart-empty" role="alert">
+                {waterError}
+              </p>
+            ) : waterBillMonthChartData.length === 0 ? (
+              <p className="muted mb-0 home-chart-empty">No data.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart
+                  data={waterBillMonthChartData}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke={chartColors.grid}
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="monthLabel"
+                    tick={{ fill: chartColors.text, fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={{ stroke: chartColors.border }}
+                  />
+                  <YAxis
+                    tick={{ fill: chartColors.text, fontSize: 11 }}
+                    tickLine={false}
+                    axisLine={{ stroke: chartColors.border }}
+                    width={40}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--bg-elevated)",
+                      border: `1px solid ${chartColors.border}`,
+                      borderRadius: "var(--radius-sm)",
+                      color: "var(--text-h)",
+                    }}
+                    formatter={(value) => [`₹${value}`, "Water bill"]}
+                    labelFormatter={(_, payload) => payload?.[0]?.payload?.monthKey || ""}
+                  />
+                  <Bar
+                    dataKey="amount"
+                    fill={chartColors.accent}
+                    radius={[6, 6, 0, 0]}
+                    maxBarSize={36}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+            <p className="small muted mb-0 mt-2">
+              <Link to="/water-bill" className="home-section-link">
                 Enter or edit amounts →
               </Link>
             </p>

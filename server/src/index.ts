@@ -7,6 +7,7 @@ import { authRouter } from "./routes/auth.js";
 import { ordersRouter } from "./routes/orders.js";
 import { housekeeperRouter } from "./routes/housekeeper.js";
 import { lightBillRouter } from "./routes/lightBill.js";
+import { waterBillRouter } from "./routes/waterBill.js";
 import { depositRouter } from "./routes/deposit.js";
 import { startDailyReportJob } from "./jobs/dailyReportJob.js";
 
@@ -43,6 +44,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/orders", ordersRouter);
 app.use("/api/housekeeper", housekeeperRouter);
 app.use("/api/light-bill", lightBillRouter);
+app.use("/api/water-bill", waterBillRouter);
 app.use("/api/deposit", depositRouter);
 
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
