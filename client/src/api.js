@@ -231,6 +231,21 @@ export function saveLightBillPeriod({ fromMonthKey, toMonthKey, amount }) {
   });
 }
 
+export function getWaterBillsForYear(year) {
+  const y = Number(year);
+  const params = new URLSearchParams();
+  params.set("year", String(y));
+  return request(`/api/water-bill?${params}`);
+}
+
+export function saveWaterBill({ monthKey, amount }) {
+  return request("/api/water-bill", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ monthKey, amount }),
+  });
+}
+
 export function getDeposit() {
   return request("/api/deposit");
 }
