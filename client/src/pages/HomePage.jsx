@@ -4,6 +4,8 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -261,7 +263,14 @@ function useChartThemeColors() {
   );
 }
 
-export default function HomePage() {
+const WEATHER_API_BASE_URL = (
+  import.meta.env.VITE_WEATHER_API_BASE_URL || "https://api.open-meteo.com"
+).replace(/\/$/, "");
+const WEATHER_GEOCODE_API_BASE_URL = (
+  import.meta.env.VITE_WEATHER_GEOCODE_API_BASE_URL || "https://geocoding-api.open-meteo.com"
+).replace(/\/$/, "");
+
+export default function HomePage({ authUser }) {
   const chartColors = useChartThemeColors();
   const currentYear = useMemo(() => new Date().getFullYear(), []);
   const [chartMonth, setChartMonth] = useState(currentMonthValue);
@@ -289,6 +298,10 @@ export default function HomePage() {
   const [depositTotalAmount, setDepositTotalAmount] = useState(0);
   const [depositLoading, setDepositLoading] = useState(true);
   const [depositError, setDepositError] = useState(null);
+  const [temperatureC, setTemperatureC] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(true);
+  const [weatherError, setWeatherError] = useState(null);
+  const [weatherCityLabel, setWeatherCityLabel] = useState("—");
 
   const range = useMemo(() => monthToDateRange(chartMonth), [chartMonth]);
   const selectedYear = useMemo(() => {
@@ -489,6 +502,66 @@ export default function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
+    const addressQuery = String(authUser?.address || "").trim();
+
+    async function loadWeatherFromAddress() {
+      try {
+        if (!cancelled) {
+          setWeatherLoading(true);
+          setWeatherError(null);
+        }
+        if (!addressQuery) {
+          throw new Error("Address not set.");
+        }
+
+        const geocodeRes = await fetch(
+          `${WEATHER_GEOCODE_API_BASE_URL}/v1/search?name=${encodeURIComponent(addressQuery)}&count=1&language=en&format=json`
+        );
+        if (!geocodeRes.ok) throw new Error("Failed to resolve address.");
+        const geocodeData = await geocodeRes.json();
+        const first = geocodeData?.results?.[0];
+        const lat = Number(first?.latitude);
+        const lon = Number(first?.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+          throw new Error("Could not find location from address.");
+        }
+        const cityName = [first?.name, first?.admin1 || first?.country]
+          .filter(Boolean)
+          .join(", ");
+
+        const weatherRes = await fetch(
+          `${WEATHER_API_BASE_URL}/v1/forecast?latitude=${encodeURIComponent(String(lat))}&longitude=${encodeURIComponent(String(lon))}&current=temperature_2m&timezone=Asia%2FKolkata`
+        );
+        if (!weatherRes.ok) throw new Error("Failed to fetch temperature.");
+        const weatherData = await weatherRes.json();
+        const value = Number(weatherData?.current?.temperature_2m);
+        if (!Number.isFinite(value)) throw new Error("Temperature unavailable.");
+        if (!cancelled) {
+          setTemperatureC(value);
+          setWeatherCityLabel(cityName || addressQuery);
+          setWeatherError(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setTemperatureC(null);
+          setWeatherCityLabel(addressQuery || "—");
+          setWeatherError(e?.message || "Failed to load weather.");
+        }
+      } finally {
+        if (!cancelled) setWeatherLoading(false);
+      }
+    }
+
+    loadWeatherFromAddress();
+    const intervalId = window.setInterval(loadWeatherFromAddress, 10 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [authUser?.address]);
+
+  useEffect(() => {
+    let cancelled = false;
     setMonthOrdersLoading(true);
     setMonthOrdersError(null);
     (async () => {
@@ -682,7 +755,6 @@ export default function HomePage() {
     };
   }, []);
 
-  const monthLabelShort = `${chartMonth.slice(5, 7)}/${chartMonth.slice(0, 4)}`;
   const rangeDisplay = `${formatDateDDMMYYYY(range.from)} – ${formatDateDDMMYYYY(range.to)}`;
 
   return (
@@ -720,12 +792,22 @@ export default function HomePage() {
             max={currentMonthValue()}
           />
         </label>
-        <p className="muted invoice-range-hint mb-0">
-          <strong>{monthHumanLabel(chartMonth)}</strong>
-          <span className="small muted"> · {monthLabelShort}</span>
-          <br />
+        <div className="home-weather-inline" aria-live="polite">
+          <span className="home-weather-city">{weatherCityLabel || "—"}</span>
+          {weatherLoading ? (
+            <strong className="home-weather-value">Loading…</strong>
+          ) : weatherError ? (
+            <strong className="home-weather-value small muted">—</strong>
+          ) : (
+            <strong className="home-weather-value">
+              <span className="home-weather-icon" aria-hidden>
+                🌤️
+              </span>
+              {temperatureC != null ? `${temperatureC}\u00b0C` : "—"}
+            </strong>
+          )}
           <span className="small">{rangeDisplay}</span>
-        </p>
+        </div>
       </div>
 
       <div className="home-stat-grid">
@@ -1076,7 +1158,7 @@ export default function HomePage() {
               <p className="muted mb-0 home-chart-empty">No data.</p>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart
+                <LineChart
                   data={lightBillPeriodChartData}
                   margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
                 >
@@ -1115,13 +1197,15 @@ export default function HomePage() {
                       return `${p.periodLabel} (${p.rangeLabel})`;
                     }}
                   />
-                  <Bar
+                  <Line
                     dataKey="amount"
-                    fill={chartColors.accent}
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={36}
+                    type="monotone"
+                    stroke={chartColors.accent}
+                    strokeWidth={3}
+                    dot={{ r: 3, strokeWidth: 2, fill: chartColors.accent }}
+                    activeDot={{ r: 5 }}
                   />
-                </BarChart>
+                </LineChart>
               </ResponsiveContainer>
             )}
             <p className="small muted mb-0 mt-2">
@@ -1149,7 +1233,7 @@ export default function HomePage() {
               <p className="muted mb-0 home-chart-empty">No data.</p>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart
+                <LineChart
                   data={waterBillMonthChartData}
                   margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
                 >
@@ -1180,13 +1264,15 @@ export default function HomePage() {
                     formatter={(value) => [`₹${value}`, "Water bill"]}
                     labelFormatter={(_, payload) => payload?.[0]?.payload?.monthKey || ""}
                   />
-                  <Bar
+                  <Line
                     dataKey="amount"
-                    fill={chartColors.accent}
-                    radius={[6, 6, 0, 0]}
-                    maxBarSize={36}
+                    type="monotone"
+                    stroke={chartColors.accent}
+                    strokeWidth={3}
+                    dot={{ r: 3, strokeWidth: 2, fill: chartColors.accent }}
+                    activeDot={{ r: 5 }}
                   />
-                </BarChart>
+                </LineChart>
               </ResponsiveContainer>
             )}
             <p className="small muted mb-0 mt-2">

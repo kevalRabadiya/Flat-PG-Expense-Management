@@ -2606,6 +2606,59 @@
   overflow: hidden;
 }
 
+.home-weather-inline {
+  align-self: stretch;
+  display: grid;
+  justify-items: end;
+  gap: 0.16rem;
+}
+
+.home-weather-city {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.home-weather-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--text-h);
+  font-size: clamp(1.25rem, 2vw, 1.45rem);
+  font-weight: 700;
+}
+
+.home-weather-icon {
+  font-size: 1.08rem;
+  line-height: 1;
+}
+
+.home-live-info {
+  margin-bottom: 1.2rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.home-live-info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.home-live-info-item {
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--glass-bg) 76%, transparent);
+  padding: 0.7rem 0.8rem;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.home-live-info-item strong {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
 .home-month-toolbar::after {
   content: "";
   position: absolute;
@@ -2632,6 +2685,10 @@
 }
 
 @media (max-width: 980px) {
+  .home-live-info-grid {
+    grid-template-columns: 1fr;
+  }
+
   .home-stat-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3331,6 +3388,10 @@
     max-width: none;
     width: 100%;
     gap: 0.85rem;
+  }
+
+  .home-weather-inline {
+    justify-items: start;
   }
 
   .history-page-head,
