@@ -439,6 +439,10 @@ export default function HomePage({ authUser }) {
     const out = [];
     for (let m = 1; m <= monthNow; m += 1) {
       const monthKey = `${year}-${String(m).padStart(2, "0")}`;
+      const isCurrentMonth = year === currentYear && m === Number(today.slice(5, 7));
+      if (isCurrentMonth && !amountByMonth.has(monthKey)) {
+        continue;
+      }
       out.push({
         monthKey,
         monthLabel: new Date(year, m - 1, 1).toLocaleString("en-IN", { month: "short" }),
