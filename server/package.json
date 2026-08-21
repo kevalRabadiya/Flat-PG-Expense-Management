@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node scripts/postbuild.cjs",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "auth:bootstrap-users": "tsx src/scripts/bootstrapAuthUsers.ts",
