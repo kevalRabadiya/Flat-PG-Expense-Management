@@ -9,7 +9,9 @@ import { housekeeperRouter } from "./routes/housekeeper.js";
 import { lightBillRouter } from "./routes/lightBill.js";
 import { waterBillRouter } from "./routes/waterBill.js";
 import { depositRouter } from "./routes/deposit.js";
+import { settingsRouter } from "./routes/settings.js";
 import { startDailyReportJob } from "./jobs/dailyReportJob.js";
+import { loadSettingsFromDb } from "./settingsService.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const PORT = Number(process.env.PORT) || 5000;
@@ -46,6 +48,7 @@ app.use("/api/housekeeper", housekeeperRouter);
 app.use("/api/light-bill", lightBillRouter);
 app.use("/api/water-bill", waterBillRouter);
 app.use("/api/deposit", depositRouter);
+app.use("/api/settings", settingsRouter);
 
 const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   console.error(err);
@@ -55,7 +58,8 @@ app.use(errorHandler);
 
 mongoose
   .connect(MONGODB_URI)
-  .then(() => {
+  .then(async () => {
+    await loadSettingsFromDb();
     app.listen(PORT, () => {
       console.log(`API listening on ${process.env.NODE_ENV === "production" ?  `Production`  : `http://localhost:${PORT}`}`);
       console.log("Connected to MongoDB");

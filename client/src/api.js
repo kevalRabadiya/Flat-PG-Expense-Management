@@ -258,6 +258,18 @@ export function saveDeposit({ totalAmount, allocations }) {
   });
 }
 
+export function getSettings() {
+  return request("/api/settings");
+}
+
+export function updateSettings(body) {
+  return request("/api/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 export function getServerHealth() {
   return request("/health");
 }

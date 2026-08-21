@@ -17,3 +17,24 @@ export const THALI_BUNDLES = [
   { id: 4, price: readVitePrice("VITE_THALI_4_PRICE", 90), roti: 5, sabji: 2, dalRice: 0 },
   { id: 5, price: readVitePrice("VITE_THALI_5_PRICE", 75), roti: 5, sabji: 1, dalRice: 0 },
 ];
+
+const THALI_BUNDLE_BY_ID = new Map(THALI_BUNDLES.map((b) => [b.id, b]));
+
+/**
+ * Apply admin-configured thali prices (from `GET /api/settings`) on top of
+ * the env/hardcoded defaults above. Mutates the bundle objects in place so
+ * every module that already imported `THALI_BUNDLES` (order form, history,
+ * optimizer) reflects the new price on its next render — no reload needed.
+ */
+export function applyThaliPriceOverrides(thaliPrices) {
+  if (!thaliPrices || typeof thaliPrices !== "object") return;
+  for (const [key, value] of Object.entries(thaliPrices)) {
+    const id = Number(key);
+    const bundle = THALI_BUNDLE_BY_ID.get(id);
+    if (!bundle) continue;
+    const n = Number(value);
+    if (Number.isFinite(n) && n >= 0) {
+      bundle.price = n;
+    }
+  }
+}

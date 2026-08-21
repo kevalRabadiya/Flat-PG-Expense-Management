@@ -24,6 +24,35 @@ const THALI_PRICES: Record<number, number> = {
   5: readPriceFromEnv("THALI_5_PRICE", DEFAULT_THALI_PRICES[5]),
 };
 
+/** Env/hardcoded fallback, captured before any DB override is applied. */
+const FALLBACK_THALI_PRICES: Record<number, number> = { ...THALI_PRICES };
+
+/**
+ * Apply admin-configured thali prices on top of the env/hardcoded fallback.
+ * Mutates the shared `THALI_PRICES` object in place so every module that
+ * already imported it (reports, order totals) sees the new values
+ * immediately, without a server restart.
+ * A `null`/`undefined` entry resets that thali id back to its fallback price.
+ */
+export function applyThaliPriceOverrides(
+  overrides: Partial<Record<number, number | null | undefined>> | null | undefined
+): void {
+  for (const id of [1, 2, 3, 4, 5]) {
+    const raw = overrides?.[id];
+    if (raw == null) {
+      THALI_PRICES[id] = FALLBACK_THALI_PRICES[id];
+      continue;
+    }
+    const n = Number(raw);
+    THALI_PRICES[id] = Number.isFinite(n) && n >= 0 ? n : FALLBACK_THALI_PRICES[id];
+  }
+}
+
+/** Current effective thali prices (fallback + any applied DB override). */
+export function getEffectiveThaliPrices(): Record<number, number> {
+  return { ...THALI_PRICES };
+}
+
 /** Allowed values for dal-rice dropdown (₹40 when set). */
 export const DAL_RICE_TYPES = ["Pulav", "Khichdi", "Dalrice"] as const;
 

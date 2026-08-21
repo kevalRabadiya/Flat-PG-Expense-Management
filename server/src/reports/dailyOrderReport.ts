@@ -99,15 +99,20 @@ const EXTRA_PRICES = {
   rice: Number(process.env.RICE_PRICE || 30),
 };
 
-const THALI_BUNDLES: Bundle[] = [
-  { id: 1, price: THALI_PRICES[1], roti: 5, sabji: 2, dalRice: 1 },
-  { id: 2, price: THALI_PRICES[2], roti: 8, sabji: 2, dalRice: 0 },
-  { id: 3, price: THALI_PRICES[3], roti: 5, sabji: 1, dalRice: 1 },
-  { id: 4, price: THALI_PRICES[4], roti: 5, sabji: 2, dalRice: 0 },
-  { id: 5, price: THALI_PRICES[5], roti: 5, sabji: 1, dalRice: 0 },
-];
-
-const THALI_BY_ID = new Map(THALI_BUNDLES.map((b) => [b.id, b]));
+/**
+ * Built fresh on every call (not cached at module load) so admin-configured
+ * thali price overrides (`settingsService.applySettingsOverrides`) show up in
+ * the report immediately, without a server restart.
+ */
+function buildThaliBundles(): Bundle[] {
+  return [
+    { id: 1, price: THALI_PRICES[1], roti: 5, sabji: 2, dalRice: 1 },
+    { id: 2, price: THALI_PRICES[2], roti: 8, sabji: 2, dalRice: 0 },
+    { id: 3, price: THALI_PRICES[3], roti: 5, sabji: 1, dalRice: 1 },
+    { id: 4, price: THALI_PRICES[4], roti: 5, sabji: 2, dalRice: 0 },
+    { id: 5, price: THALI_PRICES[5], roti: 5, sabji: 1, dalRice: 0 },
+  ];
+}
 
 function getIstDateKey(date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -237,6 +242,7 @@ function totalsFromOrderedThalis(thaliCounts: Map<number, number>): {
   dalRice: number;
   thaliCost: number;
 } {
+  const thaliById = new Map(buildThaliBundles().map((b) => [b.id, b]));
   let roti = 0;
   let sabji = 0;
   let dalRice = 0;
@@ -244,7 +250,7 @@ function totalsFromOrderedThalis(thaliCounts: Map<number, number>): {
   for (const [id, qtyRaw] of thaliCounts.entries()) {
     const qty = Number(qtyRaw) || 0;
     if (qty <= 0) continue;
-    const bundle = THALI_BY_ID.get(id);
+    const bundle = thaliById.get(id);
     if (!bundle) continue;
     roti += bundle.roti * qty;
     sabji += bundle.sabji * qty;
@@ -286,6 +292,7 @@ function heapPop(arr: number[][]): number[] | null {
 }
 
 function optimizeFullDemand(summary: SummaryAccumulator): ReportOptimization {
+  const thaliBundles = buildThaliBundles();
   const ordered = totalsFromOrderedThalis(summary.thaliCounts);
   const extraR = summary.rotiTotal;
   const extraS = summary.sabjiLegacyTotal + summary.sabjiNamedPortions;
@@ -319,9 +326,9 @@ function optimizeFullDemand(summary: SummaryAccumulator): ReportOptimization {
     };
   }
 
-  const maxR = Math.max(...THALI_BUNDLES.map((b) => b.roti));
-  const maxS = Math.max(...THALI_BUNDLES.map((b) => b.sabji));
-  const maxD = Math.max(...THALI_BUNDLES.map((b) => b.dalRice));
+  const maxR = Math.max(...thaliBundles.map((b) => b.roti));
+  const maxS = Math.max(...thaliBundles.map((b) => b.sabji));
+  const maxD = Math.max(...thaliBundles.map((b) => b.dalRice));
   const RCap = Math.min(R + maxR, 400);
   const SCap = Math.min(S + maxS, 200);
   const DCap = Math.min(D + maxD, 200);
@@ -339,7 +346,7 @@ function optimizeFullDemand(summary: SummaryAccumulator): ReportOptimization {
     const [cost, cr, cs, cd] = popped;
     const k = key(cr, cs, cd);
     if (cost > (dist.get(k) ?? Number.POSITIVE_INFINITY)) continue;
-    for (const b of THALI_BUNDLES) {
+    for (const b of thaliBundles) {
       const nr = Math.min(RCap, cr + b.roti);
       const ns = Math.min(SCap, cs + b.sabji);
       const nd = Math.min(DCap, cd + b.dalRice);

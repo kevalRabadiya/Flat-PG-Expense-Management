@@ -27,6 +27,7 @@ import {
   computeEqualSplitByDay,
 } from "../utils/dailyOptimization.js";
 import { useTheme } from "../theme/useTheme.js";
+import { useSettings } from "../settings/useSettings.js";
 
 function todayISO() {
   const d = new Date();
@@ -271,6 +272,7 @@ const WEATHER_GEOCODE_API_BASE_URL = (
 ).replace(/\/$/, "");
 
 export default function HomePage({ authUser }) {
+  const { housekeeperRatePerDay } = useSettings();
   const chartColors = useChartThemeColors();
   const currentYear = useMemo(() => new Date().getFullYear(), []);
   const [chartMonth, setChartMonth] = useState(currentMonthValue);
@@ -377,7 +379,7 @@ export default function HomePage({ authUser }) {
         .length,
     [housekeeperRows]
   );
-  const housekeeperRate = Number(import.meta.env.VITE_HOUSEKEEPER_RATE_PER_DAY) || 0;
+  const housekeeperRate = housekeeperRatePerDay;
   const housekeeperAmount = housekeeperDays * housekeeperRate;
 
   const housekeeperMonthlyChartData = useMemo(() => {
