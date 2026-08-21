@@ -58,12 +58,19 @@ app.use(errorHandler);
 
 mongoose
   .connect(MONGODB_URI)
-  .then(async () => {
-    await loadSettingsFromDb();
+  .then(() => {
     app.listen(PORT, () => {
       console.log(`API listening on ${process.env.NODE_ENV === "production" ?  `Production`  : `http://localhost:${PORT}`}`);
       console.log("Connected to MongoDB");
       startDailyReportJob();
+    });
+    // Hydrate admin-configured pricing in the background. Never let a slow
+    // or failing read here delay/crash server startup (previously this was
+    // `await`-ed before `app.listen`, which added a blocking DB round trip
+    // to every cold start and could tip a serverless invocation into a
+    // timeout/crash for ALL routes, not just /api/settings).
+    loadSettingsFromDb().catch((err: unknown) => {
+      console.error("Failed to load settings from DB:", err);
     });
   })
   .catch((err: unknown) => {
