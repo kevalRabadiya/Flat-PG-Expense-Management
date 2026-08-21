@@ -3,6 +3,7 @@ import { getHousekeeperAttendance, setHousekeeperAttendance } from "../api";
 import Loader from "../components/Loader.jsx";
 import { toast } from "../lib/toast.js";
 import { formatDateDDMMYYYY } from "../utils/dateFormat.js";
+import { useSettings } from "../settings/useSettings.js";
 
 function monthValueFromDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
@@ -52,9 +53,8 @@ function buildCalendarCells(ym) {
   return cells;
 }
 
-const RATE_PER_DAY = Number(import.meta.env.VITE_HOUSEKEEPER_RATE_PER_DAY) || 0;
-
 export default function HousekeeperPage() {
+  const { housekeeperRatePerDay: RATE_PER_DAY } = useSettings();
   const [month, setMonth] = useState(() => monthValueFromDate(new Date()));
   const [presentDateKeys, setPresentDateKeys] = useState(() => new Set());
   const [savingDateKey, setSavingDateKey] = useState("");

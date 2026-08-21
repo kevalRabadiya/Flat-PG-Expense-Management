@@ -22,6 +22,8 @@ import ServerDownPage from "./pages/ServerDownPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import ChangePasswordPage from "./pages/ChangePasswordPage.jsx";
+import ConfigPage from "./pages/ConfigPage.jsx";
+import { SettingsProvider } from "./settings/SettingsProvider.jsx";
 import {
   API_DOWN_EVENT,
   SERVER_DOWN_PATH,
@@ -207,12 +209,17 @@ function UtilitiesMenu() {
   );
 }
 
+/** Only this username may see/use the pricing config menu. */
+const CONFIG_ADMIN_USERNAME = "keval";
+
 function ProfileMenu({ authUser, onLogout }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef(null);
   const { resolvedTheme, setTheme, palette, setPalette, paletteOptions } = useTheme();
   const isDark = resolvedTheme === "dark";
   const username = authUser?.username || authUser?.name || "User";
+  const canConfig =
+    String(authUser?.username || "").toLowerCase() === CONFIG_ADMIN_USERNAME;
   const initials = String(username)
     .trim()
     .split(/\s+/)
@@ -261,6 +268,18 @@ function ProfileMenu({ authUser, onLogout }) {
             <span className="small muted">Signed in as</span>
             <strong>{username}</strong>
           </div>
+          {canConfig ? (
+            <NavLink
+              to="/config"
+              className="profile-menu-item"
+              role="menuitem"
+              onClick={() => {
+                setOpen(false);
+              }}
+            >
+              Config
+            </NavLink>
+          ) : null}
           <NavLink
             to="/change-password"
             className="profile-menu-item"
@@ -439,120 +458,130 @@ export default function App() {
   }
 
   return (
-    <Layout
-      isAuthenticated={isAuthenticated}
-      authUser={authUser}
-      onLogout={handleLogout}
-    >
-      <Routes>
-        <Route
-          path="/login"
-          element={
-            <LoginPage
-              isAuthenticated={isAuthenticated}
-              onAuthChange={handleAuthChange}
-            />
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <RegisterPage
-              isAuthenticated={isAuthenticated}
-              onAuthChange={handleAuthChange}
-            />
-          }
-        />
-        <Route
-          path="/"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <HomePage authUser={authUser} />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/users"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <UsersPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/users/new"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <AddUserPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/history"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <HistoryPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/invoice"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <InvoicePage authUser={authUser} />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/housekeeper"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <HousekeeperPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/light-bill"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <LightBillPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/deposit"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <DepositPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/water-bill"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <WaterBillPage />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/order"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <OrderPage authUser={authUser} />
-            </RequireAuth>
-          }
-        />
-        <Route
-          path="/change-password"
-          element={
-            <RequireAuth isAuthenticated={isAuthenticated}>
-              <ChangePasswordPage />
-            </RequireAuth>
-          }
-        />
-        <Route path={SERVER_DOWN_PATH} element={<ServerDownPage />} />
-      </Routes>
-    </Layout>
+    <SettingsProvider isAuthenticated={isAuthenticated}>
+      <Layout
+        isAuthenticated={isAuthenticated}
+        authUser={authUser}
+        onLogout={handleLogout}
+      >
+        <Routes>
+          <Route
+            path="/login"
+            element={
+              <LoginPage
+                isAuthenticated={isAuthenticated}
+                onAuthChange={handleAuthChange}
+              />
+            }
+          />
+          <Route
+            path="/register"
+            element={
+              <RegisterPage
+                isAuthenticated={isAuthenticated}
+                onAuthChange={handleAuthChange}
+              />
+            }
+          />
+          <Route
+            path="/"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <HomePage authUser={authUser} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <UsersPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/users/new"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <AddUserPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <HistoryPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/invoice"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <InvoicePage authUser={authUser} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/housekeeper"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <HousekeeperPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/light-bill"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <LightBillPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/deposit"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <DepositPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/water-bill"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <WaterBillPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/order"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <OrderPage authUser={authUser} />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/change-password"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <ChangePasswordPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/config"
+            element={
+              <RequireAuth isAuthenticated={isAuthenticated}>
+                <ConfigPage authUser={authUser} />
+              </RequireAuth>
+            }
+          />
+          <Route path={SERVER_DOWN_PATH} element={<ServerDownPage />} />
+        </Routes>
+      </Layout>
+    </SettingsProvider>
   );
 }
